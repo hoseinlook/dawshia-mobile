@@ -5,6 +5,7 @@ const ICONS: Record<string, IconName> = {
   pushup: 'arm-flex',
   pullup: 'human-handsup',
   muscleup: 'lightning-bolt',
+  handstand: 'human-handsdown',
 };
 
 export function exerciseIcon(exerciseId: string): IconName {

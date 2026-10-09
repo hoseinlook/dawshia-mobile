@@ -1,3 +1,4 @@
+import { handstand } from './handstand';
 import { muscleup } from './muscleup';
 import { pullup } from './pullup';
 import { pushup } from './pushup';
@@ -8,7 +9,7 @@ import type { ExerciseDefinition, ExerciseId } from './types';
  * To add one: create `src/core/exercises/<name>/` exporting an
  * `ExerciseDefinition`, then add it to this list.
  */
-const EXERCISES: readonly ExerciseDefinition[] = [pushup, pullup, muscleup];
+const EXERCISES: readonly ExerciseDefinition[] = [pushup, pullup, muscleup, handstand];
 
 const byId = new Map(EXERCISES.map((e) => [e.id, e]));
 

@@ -20,10 +20,12 @@ export const fa = {
     settings: 'تنظیمات',
   },
   competition: {
+    holdRule: 'هر کس بیشتر نگه دارد برنده است.',
     title: 'نوع مسابقه',
     timedRepsRule: 'بیشترین تکرار صحیح تا پایان زمان برنده است.',
   },
   profile: {
+    seconds: 'ثانیه',
     title: 'پروفایل',
     today: 'امروز',
     month: 'این ماه',
@@ -98,6 +100,7 @@ export const fa = {
     goAgain: 'دوباره',
   },
   timeControls: {
+    resistance: { label: 'مقاومت', description: 'تا جایی که می‌توانی نگه دار' },
     bullet: { label: 'گلوله‌ای', description: '۱ دقیقه · با تمام قدرت' },
     blitz: { label: 'برق‌آسا', description: '۳ دقیقه · سریع و پرفشار' },
     rapid: { label: 'سریع', description: '۵ دقیقه · انرژی‌ات را تقسیم کن' },
@@ -134,8 +137,22 @@ export const fa = {
         'برای شروع، با دست‌های کاملاً صاف آویزان بمان.',
       ],
     },
+    handstand: {
+      name: 'هنداستند',
+      description: 'وارونه روی دست‌ها، دست‌ها قفل و بدن صاف — تا می‌توانی نگه دار.',
+      instructions: [
+        'گوشی را عمودی روی زمین یا سه‌پایه قرار بده؛ کنار دیوار هم می‌شود.',
+        'حدود ۲ تا ۳ متر فاصله بگیر تا وقتی وارونه‌ای کل بدنت در تصویر باشد.',
+        'بعد از شمارش معکوس بالا برو و تا می‌توانی نگه دار.',
+        'زمان از لحظهٔ بالانس شروع می‌شود و با افتادن تمام می‌شود.',
+      ],
+    },
   },
   game: {
+    seconds: '{seconds} ثانیه',
+    holdTime: 'ثانیه نگه داشتی',
+    personalBestHold: 'رکورد تو: {seconds} ثانیه',
+    beatYourBestHold: 'رکوردت را بشکن: {seconds} ثانیه',
     level: 'سطح {level}',
     xp: '{xp} XP',
     xpToNext: '{xp} XP تا سطح بعد',
@@ -167,6 +184,7 @@ export const fa = {
     legend: 'افسانه',
   },
   achievements: {
+    handstand30: { title: 'وارونه', description: '۳۰ ثانیه هنداستند نگه دار.' },
     firstRep: { title: 'اولین ضربه', description: 'اولین تکرار صحیحت را انجام بده.' },
     firstSession: { title: 'تا آخر خط', description: 'یک مسابقه را تا پایان زمان کامل کن.' },
     reps100: { title: 'صدتایی', description: 'در مجموع ۱۰۰ تکرار صحیح.' },
@@ -181,6 +199,9 @@ export const fa = {
     pushups50: { title: 'ماشین شنا', description: '۵۰ شنا در یک مسابقه.' },
   },
   cues: {
+    kickUp: 'بالا برو — وارد هنداستند شو',
+    lockArms: 'دست‌ها را کامل صاف کن',
+    straightBody: 'بدنت را صاف و عمودی نگه دار',
     lockOut: 'بالای میله دست‌ها را کامل صاف کن',
     notVisibleFront: 'رو به دوربین، کل بدنت را نشان بده',
     getOnBar: 'از میله آویزان شو',

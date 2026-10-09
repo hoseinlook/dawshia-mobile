@@ -67,9 +67,10 @@ export interface ExerciseDefinition {
   id: ExerciseId;
   camera: CameraSetup;
   /**
-   * Competition types this exercise offers, in menu order. Today every type is
-   * "most valid reps within a time control". Exercises with a different format
-   * (e.g. a handstand hold: longest hold wins) will add a new format here.
+   * Competition types this exercise offers, in menu order. Each type has a
+   * format (see timeControls.ts): rep exercises offer time controls, holds
+   * (e.g. handstand) offer `resistance`. Hold analyzers report the hold via
+   * `inPosition` and `metrics.holdMs`.
    */
   competitions: readonly TimeControlId[];
   createAnalyzer(): ExerciseAnalyzer;

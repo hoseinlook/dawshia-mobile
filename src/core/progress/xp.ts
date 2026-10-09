@@ -15,6 +15,13 @@ export function sessionXp(reps: number, qualitySum: number, completed: boolean):
   return reps * XP_PER_REP + Math.round(qualitySum * XP_QUALITY_BONUS) + (completed ? XP_COMPLETION_BONUS : 0);
 }
 
+/** XP per second held in a hold (resistance) competition. */
+export const XP_PER_HOLD_SECOND = 2;
+
+export function holdXp(holdMs: number, completed: boolean): number {
+  return Math.floor(holdMs / 1000) * XP_PER_HOLD_SECOND + (completed && holdMs > 0 ? XP_COMPLETION_BONUS : 0);
+}
+
 /** Total XP needed to reach `level` (level 1 = 0 XP; each level is 100 XP longer than the last). */
 export function xpForLevel(level: number): number {
   return 50 * level * (level - 1);

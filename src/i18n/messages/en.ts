@@ -16,10 +16,12 @@ export const en: Messages = {
     settings: 'Settings',
   },
   competition: {
+    holdRule: 'Longest hold wins.',
     title: 'Competition type',
     timedRepsRule: 'Most valid reps before the clock runs out wins.',
   },
   profile: {
+    seconds: 'sec',
     title: 'Profile',
     today: 'Today',
     month: 'This month',
@@ -94,6 +96,7 @@ export const en: Messages = {
     goAgain: 'Go again',
   },
   timeControls: {
+    resistance: { label: 'Resistance', description: 'Hold as long as you can' },
     bullet: { label: 'Bullet', description: '1 min · all-out sprint' },
     blitz: { label: 'Blitz', description: '3 min · fast and furious' },
     rapid: { label: 'Rapid', description: '5 min · pace yourself' },
@@ -130,8 +133,22 @@ export const en: Messages = {
         'Start from a dead hang with arms fully straight.',
       ],
     },
+    handstand: {
+      name: 'Handstand',
+      description: 'Upside down on your hands, arms locked, body straight — hold as long as you can.',
+      instructions: [
+        'Stand your phone upright on the floor or a tripod; next to a wall works too.',
+        'Step back 2–3 meters so your whole body stays on screen when inverted.',
+        'After the countdown, kick up and hold as long as you can.',
+        'The clock starts when you are balanced and stops when you come down.',
+      ],
+    },
   },
   game: {
+    seconds: '{seconds} s',
+    holdTime: 'seconds held',
+    personalBestHold: 'Your best: {seconds} s',
+    beatYourBestHold: 'Beat your best: {seconds} s',
     level: 'Level {level}',
     xp: '{xp} XP',
     xpToNext: '{xp} XP to next level',
@@ -163,6 +180,7 @@ export const en: Messages = {
     legend: 'Legend',
   },
   achievements: {
+    handstand30: { title: 'Upside Down', description: 'Hold a handstand for 30 seconds.' },
     firstRep: { title: 'First Hit', description: 'Do your first valid rep.' },
     firstSession: { title: 'Full Distance', description: 'Finish a match before quitting.' },
     reps100: { title: 'Century', description: '100 valid reps in total.' },
@@ -177,6 +195,9 @@ export const en: Messages = {
     pushups50: { title: 'Push-up Machine', description: '50 push-ups in one match.' },
   },
   cues: {
+    kickUp: 'Kick up into a handstand',
+    lockArms: 'Lock your arms',
+    straightBody: 'Straighten your body — stay vertical',
     lockOut: 'Lock out at the top — straight arms',
     notVisibleFront: 'Face the camera and show your whole body',
     getOnBar: 'Hang from the bar',

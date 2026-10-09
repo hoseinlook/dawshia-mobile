@@ -4,6 +4,7 @@ import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { listExercises } from '../core/exercises/registry';
+import { isHold } from '../core/match/timeControls';
 import { computeProgress, personalBest } from '../core/progress/progress';
 import { useAuth } from '../features/auth/AuthProvider';
 import { PlayerCard } from '../features/progress/PlayerCard';
@@ -64,7 +65,13 @@ export default function HomeScreen() {
               icon={exerciseIcon(e.id)}
               title={text.name}
               subtitle={text.description}
-              meta={best > 0 ? f(m.game.personalBest, { reps: best }) : undefined}
+              meta={
+                best > 0
+                  ? e.competitions.every(isHold)
+                    ? f(m.game.personalBestHold, { seconds: best })
+                    : f(m.game.personalBest, { reps: best })
+                  : undefined
+              }
               navigates
               onPress={() => router.push({ pathname: '/exercise/[exerciseId]', params: { exerciseId: e.id } })}
             />

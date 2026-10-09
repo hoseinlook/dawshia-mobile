@@ -69,3 +69,45 @@ describe('matchReducer', () => {
     expect(computeResult(s).finishReason).toBe('aborted');
   });
 });
+
+describe('hold (resistance) matches', () => {
+  const holdConfig: MatchConfig = {
+    ...config,
+    timeControlId: 'resistance',
+    durationMs: 600_000,
+    participants: [{ id: 'a', displayName: 'A', isLocal: true }],
+  };
+
+  it('tracks the hold and finishes when it breaks', () => {
+    let s = apply(
+      [
+        { type: 'startCountdown', nowMs: 0 },
+        { type: 'tick', nowMs: 3000 },
+        { type: 'hold', participantId: 'a', holdMs: 1000, nowMs: 5000 },
+        { type: 'hold', participantId: 'a', holdMs: 12_000, nowMs: 16_000 },
+      ],
+      createMatchState(holdConfig),
+    );
+    expect(s.status).toBe('live');
+    expect(s.scores.a.holdMs).toBe(12_000);
+    s = apply([{ type: 'holdBroken', participantId: 'a', holdMs: 12_400, nowMs: 16_400 }], s);
+    expect(s.status).toBe('finished');
+    expect(s.finishReason).toBe('time');
+    expect(computeResult(s).standings[0].score.holdMs).toBe(12_400);
+  });
+
+  it('ranks by hold length', () => {
+    const two = { ...holdConfig, participants: config.participants };
+    const s = apply(
+      [
+        { type: 'startCountdown', nowMs: 0 },
+        { type: 'tick', nowMs: 3000 },
+        { type: 'holdBroken', participantId: 'a', holdMs: 20_000, nowMs: 23_000 },
+        { type: 'holdBroken', participantId: 'b', holdMs: 31_000, nowMs: 34_000 },
+      ],
+      createMatchState(two),
+    );
+    expect(s.status).toBe('finished');
+    expect(computeResult(s).standings.map((r) => r.participant.id)).toEqual(['b', 'a']);
+  });
+});

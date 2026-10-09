@@ -206,3 +206,59 @@ export function barPose(height: number, timestampMs = 0, standing = false): Pose
   }
   return { keypoints, frameWidth: HANG_FRAME_W, frameHeight: HANG_FRAME_H, timestampMs };
 }
+
+export interface HandstandOptions {
+  /** Elbow angle in degrees (180 = locked). */
+  elbowAngle?: number;
+  /** Degrees the body leans away from vertical. */
+  lean?: number;
+  /** Upright standing pose instead of inverted. */
+  standing?: boolean;
+  timestampMs?: number;
+}
+
+/** Side-ish view of a handstand in a portrait frame (hands on the floor at y=1150). */
+export function handstandPose({ elbowAngle = 175, lean = 0, standing = false, timestampMs = 0 }: HandstandOptions = {}): Pose {
+  const px: Partial<Record<(typeof KEYPOINT_NAMES)[number], [number, number]>> = {};
+  const floor = 1150;
+  const half = (elbowAngle * Math.PI) / 360;
+  const armSpan = 2 * HANG_ARM * Math.sin(half);
+  const rad = (lean * Math.PI) / 180;
+  for (const [side, x, out] of [
+    ['left', 340, -1],
+    ['right', 380, 1],
+  ] as const) {
+    if (standing) {
+      px[`${side}Ankle`] = [x, 1150];
+      px[`${side}Knee`] = [x, 1000];
+      px[`${side}Hip`] = [x, 850];
+      px[`${side}Shoulder`] = [x, 600];
+      px[`${side}Elbow`] = [x, 710];
+      px[`${side}Wrist`] = [x, 820];
+      px[`${side}Eye`] = [x, 520];
+      px[`${side}Ear`] = [x, 530];
+      continue;
+    }
+    const wrist: [number, number] = [x, floor];
+    const shoulder: [number, number] = [x, floor - armSpan];
+    const elbow: [number, number] = [x + out * HANG_ARM * Math.cos(half), floor - armSpan / 2];
+    // Body goes up from the shoulders, tilted by `lean`.
+    const along = (d: number): [number, number] => [shoulder[0] + Math.sin(rad) * d, shoulder[1] - Math.cos(rad) * d];
+    px[`${side}Wrist`] = wrist;
+    px[`${side}Shoulder`] = shoulder;
+    px[`${side}Elbow`] = elbow;
+    px[`${side}Hip`] = along(250);
+    px[`${side}Knee`] = along(400);
+    px[`${side}Ankle`] = along(520);
+    px[`${side}Eye`] = [x, shoulder[1] + 80];
+    px[`${side}Ear`] = [x, shoulder[1] + 70];
+  }
+  px.nose = standing ? [360, 525] : [360, px.leftShoulder![1] + 90];
+
+  const keypoints = {} as Keypoints;
+  for (const name of KEYPOINT_NAMES) {
+    const [x, y] = px[name] ?? [0, 0];
+    keypoints[name] = { x: x / HANG_FRAME_W, y: y / HANG_FRAME_H, score: 0.9 };
+  }
+  return { keypoints, frameWidth: HANG_FRAME_W, frameHeight: HANG_FRAME_H, timestampMs };
+}

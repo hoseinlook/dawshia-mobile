@@ -114,3 +114,27 @@ describe('computeGains', () => {
     expect(gains.newAchievements).toEqual(['perfectForm']);
   });
 });
+
+describe('hold (handstand) progress', () => {
+  function holdSession(holdMs: number, at: Date, aborted = false): MatchResult {
+    const s = session('handstand', 0, at, { aborted });
+    return { ...s, timeControlId: 'resistance', standings: [{ ...s.standings[0], score: { reps: 0, rejectedReps: 0, qualitySum: 0, holdMs } }] };
+  }
+
+  it('earns XP per second, records seconds and unlocks the 30s achievement', () => {
+    const history = [holdSession(12_500, day(7)), holdSession(31_200, day(8))];
+    const p = computeProgress(history, day(8, 20));
+    expect(p.totalXp).toBe(12 * 2 + 20 + 31 * 2 + 20);
+    expect(p.achievements.has('handstand30')).toBe(true);
+    expect(p.todayReps).toBe(0); // holds don't count toward the rep goal
+    expect(personalBest(history, 'handstand', 'resistance')).toBe(31);
+  });
+
+  it('flags a new longest hold as a personal best', () => {
+    const first = holdSession(20_000, day(7));
+    const second = holdSession(25_000, day(8));
+    const gains = computeGains([first, second], second, day(8, 20));
+    expect(gains.previousBest).toBe(20);
+    expect(gains.isPersonalBest).toBe(true);
+  });
+});

@@ -1,7 +1,7 @@
 import type { MatchResult } from '../match/types';
-import type { TimeControlId } from '../match/timeControls';
+import { isHold, type TimeControlId } from '../match/timeControls';
 import { localDateString } from '../stats/repTotals';
-import { levelInfo, rankForLevel, sessionXp, type LevelInfo, type RankId } from './xp';
+import { holdXp, levelInfo, rankForLevel, sessionXp, type LevelInfo, type RankId } from './xp';
 
 /** Reps per day the athlete aims for (clear goal → flow). */
 export const DAILY_GOAL_REPS = 50;
@@ -18,7 +18,8 @@ export type AchievementId =
   | 'endurance'
   | 'pullups10'
   | 'firstMuscleup'
-  | 'pushups50';
+  | 'pushups50'
+  | 'handstand30';
 
 /** Achievements in display order, with the icon each one shows. */
 export const ACHIEVEMENTS: readonly { id: AchievementId; icon: string }[] = [
@@ -34,6 +35,7 @@ export const ACHIEVEMENTS: readonly { id: AchievementId; icon: string }[] = [
   { id: 'pullups10', icon: 'human-handsup' },
   { id: 'firstMuscleup', icon: 'lightning-bolt' },
   { id: 'pushups50', icon: 'arm-flex' },
+  { id: 'handstand30', icon: 'human-handsdown' },
 ];
 
 export interface Streak {
@@ -85,7 +87,17 @@ export function computeStreak(trainingDates: ReadonlySet<string>, today: string)
   return { current, best, trainedToday };
 }
 
-/** Best valid reps in a full (not abandoned) session of this competition. */
+/**
+ * The session's score in its competition's unit: valid reps, or whole seconds
+ * held for hold (resistance) competitions.
+ */
+export function scoreValue(result: MatchResult): number {
+  const me = myScore(result);
+  if (!me) return 0;
+  return isHold(result.timeControlId) ? Math.floor((me.score.holdMs ?? 0) / 1000) : me.score.reps;
+}
+
+/** Best score (reps, or seconds for holds) in a full (not abandoned) session of this competition. */
 export function personalBest(
   results: readonly MatchResult[],
   exerciseId: string,
@@ -94,7 +106,7 @@ export function personalBest(
   let best = 0;
   for (const r of results) {
     if (r.exerciseId !== exerciseId || r.timeControlId !== timeControlId || r.finishReason !== 'time') continue;
-    best = Math.max(best, myScore(r)?.score.reps ?? 0);
+    best = Math.max(best, scoreValue(r));
   }
   return best;
 }
@@ -111,12 +123,24 @@ export function computeProgress(results: readonly MatchResult[], now: Date): Pro
   const perExerciseBest = new Map<string, number>();
   let perfect = false;
   let endurance = false;
+  let longestHoldMs = 0;
 
   for (const r of results) {
     const me = myScore(r);
     if (!me) continue;
     const { reps, qualitySum } = me.score;
     const completed = r.finishReason === 'time';
+    if (isHold(r.timeControlId)) {
+      const holdMs = me.score.holdMs ?? 0;
+      totalXp += holdXp(holdMs, completed);
+      if (completed) sessions++;
+      if (holdMs > 0) {
+        dates.add(localDateString(new Date(r.finishedAtMs)));
+        exercisesDone.add(r.exerciseId);
+      }
+      longestHoldMs = Math.max(longestHoldMs, holdMs);
+      continue;
+    }
     totalXp += sessionXp(reps, qualitySum, completed);
     totalReps += reps;
     if (completed) sessions++;
@@ -147,6 +171,7 @@ export function computeProgress(results: readonly MatchResult[], now: Date): Pro
   unlock('pullups10', (perExerciseBest.get('pullup') ?? 0) >= 10);
   unlock('firstMuscleup', (perExerciseBest.get('muscleup') ?? 0) >= 1);
   unlock('pushups50', (perExerciseBest.get('pushup') ?? 0) >= 50);
+  unlock('handstand30', longestHoldMs >= 30_000);
 
   return {
     totalXp,
@@ -168,7 +193,7 @@ export interface SessionGains {
   after: Progress;
   leveledUp: boolean;
   newAchievements: AchievementId[];
-  /** Previous best for this competition (0 = first full session). */
+  /** Previous best for this competition, in its unit (reps or seconds; 0 = first full session). */
   previousBest: number;
   isPersonalBest: boolean;
   /** Daily goal reached by this session. */
@@ -179,9 +204,8 @@ export function computeGains(history: readonly MatchResult[], result: MatchResul
   const without = history.filter((r) => r.matchId !== result.matchId);
   const before = computeProgress(without, now);
   const after = computeProgress([...without, result], now);
-  const me = myScore(result);
   const previousBest = personalBest(without, result.exerciseId, result.timeControlId);
-  const reps = me?.score.reps ?? 0;
+  const score = scoreValue(result);
   return {
     xp: after.totalXp - before.totalXp,
     before,
@@ -191,7 +215,7 @@ export function computeGains(history: readonly MatchResult[], result: MatchResul
       (id) => after.achievements.has(id) && !before.achievements.has(id),
     ),
     previousBest,
-    isPersonalBest: result.finishReason === 'time' && reps > previousBest && reps > 0,
+    isPersonalBest: result.finishReason === 'time' && score > previousBest && score > 0,
     goalReached: before.todayReps < before.dailyGoal && after.todayReps >= after.dailyGoal,
   };
 }

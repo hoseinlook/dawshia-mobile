@@ -16,6 +16,9 @@ const CUE_CODES = [
   'chinOverBar',
   'fullHang',
   'lockOut',
+  'kickUp',
+  'lockArms',
+  'straightBody',
 ];
 
 describe('format', () => {

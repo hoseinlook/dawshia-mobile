@@ -4,7 +4,8 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { MatchResult } from '../core/match/types';
-import { computeGains, type SessionGains } from '../core/progress/progress';
+import { isHold } from '../core/match/timeControls';
+import { computeGains, scoreValue, type SessionGains } from '../core/progress/progress';
 import { AchievementBadge } from '../features/progress/AchievementBadge';
 import { exerciseText, timeControlText } from '../i18n/lookup';
 import { useI18n } from '../i18n/useI18n';
@@ -63,6 +64,7 @@ export default function ResultsScreen() {
   const attempts = me.score.reps + me.score.rejectedReps;
   const accuracy = attempts === 0 ? 0 : Math.round((me.score.reps / attempts) * 100);
   const { after, before } = gains;
+  const hold = isHold(result.timeControlId);
 
   return (
     <SafeAreaView style={[styles.root, dir]}>
@@ -74,15 +76,24 @@ export default function ResultsScreen() {
 
         <View style={styles.hero}>
           <AppText style={[styles.big, gains.isPersonalBest && { color: colors.gold }]} accessibilityRole="header">
-            {n(me.score.reps)}
+            {n(scoreValue(result))}
           </AppText>
           <AppText variant="heading" center>
-            {m.results.validReps}
+            {hold ? m.game.holdTime : m.results.validReps}
           </AppText>
           {gains.isPersonalBest ? (
             <Chip icon="trophy" label={m.game.newRecord} color={colors.gold} />
           ) : gains.previousBest > 0 ? (
-            <Chip icon="trophy-outline" label={f(m.game.personalBest, { reps: gains.previousBest })} color={colors.textMuted} outline />
+            <Chip
+              icon="trophy-outline"
+              label={
+                hold
+                  ? f(m.game.personalBestHold, { seconds: gains.previousBest })
+                  : f(m.game.personalBest, { reps: gains.previousBest })
+              }
+              color={colors.textMuted}
+              outline
+            />
           ) : null}
         </View>
 
@@ -146,11 +157,13 @@ export default function ResultsScreen() {
           </View>
         ) : null}
 
-        <View style={styles.stats}>
-          <Stat label={m.results.formScore} value={n(Math.round(me.averageQuality * 100))} />
-          <Stat label={m.results.rejected} value={n(me.score.rejectedReps)} />
-          <Stat label={m.results.accuracy} value={n(`${accuracy}%`)} />
-        </View>
+        {hold ? null : (
+          <View style={styles.stats}>
+            <Stat label={m.results.formScore} value={n(Math.round(me.averageQuality * 100))} />
+            <Stat label={m.results.rejected} value={n(me.score.rejectedReps)} />
+            <Stat label={m.results.accuracy} value={n(`${accuracy}%`)} />
+          </View>
+        )}
 
         <Button
           label={m.results.goAgain}

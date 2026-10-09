@@ -1,3 +1,4 @@
+import { getTimeControl } from './timeControls';
 import type {
   MatchAction,
   MatchConfig,
@@ -86,6 +87,26 @@ export function matchReducer(state: MatchState, action: MatchAction): MatchState
       };
     }
 
+    case 'hold':
+    case 'holdBroken': {
+      if (!isScoring(state, action.nowMs)) return state;
+      const prev = state.scores[action.participantId];
+      if (!prev || prev.holdDone) return state;
+      const scores = {
+        ...state.scores,
+        [action.participantId]: {
+          ...prev,
+          holdMs: Math.max(prev.holdMs ?? 0, action.holdMs),
+          holdDone: action.type === 'holdBroken',
+        },
+      };
+      // Everyone's hold has broken: the match is over.
+      const allDone = state.config.participants.every((p) => scores[p.id]?.holdDone);
+      return allDone
+        ? { ...state, scores, status: 'finished', finishedAtMs: action.nowMs, finishReason: 'time' }
+        : { ...state, scores };
+    }
+
     case 'abort': {
       if (state.status === 'finished') return state;
       return { ...state, status: 'finished', finishedAtMs: action.nowMs, finishReason: 'aborted' };
@@ -116,17 +137,20 @@ export function averageQuality(score: ParticipantScore): number {
 
 /** Most valid reps wins; ties are broken by average rep quality. */
 export function computeResult(state: MatchState): MatchResult {
+  const hold = getTimeControl(state.config.timeControlId).format === 'maxHold';
+  // Hold competitions rank by hold length; rep competitions by reps, then form quality.
+  const primary = (sc: ParticipantScore) => (hold ? (sc.holdMs ?? 0) : sc.reps);
   const standings: ParticipantResult[] = state.config.participants
     .map((participant) => {
       const score = state.scores[participant.id] ?? EMPTY_SCORE;
       return { participant, score, averageQuality: averageQuality(score), rank: 0 };
     })
-    .sort((a, b) => b.score.reps - a.score.reps || b.averageQuality - a.averageQuality);
+    .sort((a, b) => primary(b.score) - primary(a.score) || b.averageQuality - a.averageQuality);
 
   standings.forEach((s, i) => {
     const prev = standings[i - 1];
     const tied =
-      prev && prev.score.reps === s.score.reps && prev.averageQuality === s.averageQuality;
+      prev && primary(prev.score) === primary(s.score) && prev.averageQuality === s.averageQuality;
     s.rank = tied ? prev.rank : i + 1;
   });
 

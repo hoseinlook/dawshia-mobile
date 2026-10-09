@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, V
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getExercise } from '../core/exercises/registry';
+import { isHold } from '../core/match/timeControls';
 import { ACHIEVEMENTS, computeProgress } from '../core/progress/progress';
 import type { ExerciseTotals } from '../core/stats/repTotals';
 import { AchievementBadge } from '../features/progress/AchievementBadge';
@@ -135,6 +136,8 @@ export default function ProfileScreen() {
 function ExerciseCard({ totals, ratings }: { totals: ExerciseTotals; ratings: Profile['ratings'] }) {
   const { m, n } = useI18n();
   const exercise = getExercise(totals.exerciseId);
+  // Holds are counted in seconds, everything else in valid reps.
+  const unit = exercise?.competitions.every(isHold) ? m.profile.seconds : m.profile.reps;
   const competitionRatings = (exercise?.competitions ?? []).flatMap((tc) => {
     const r = ratings[`${totals.exerciseId}.${tc}`];
     return r ? [{ tc, ...r }] : [];
@@ -149,9 +152,9 @@ function ExerciseCard({ totals, ratings }: { totals: ExerciseTotals; ratings: Pr
         </AppText>
       </View>
       <View style={styles.statsRow}>
-        <Stat label={m.profile.today} value={n(totals.today)} highlight />
-        <Stat label={m.profile.month} value={n(totals.month)} />
-        <Stat label={m.profile.total} value={n(totals.total)} />
+        <Stat label={m.profile.today} value={n(totals.today)} unit={unit} highlight />
+        <Stat label={m.profile.month} value={n(totals.month)} unit={unit} />
+        <Stat label={m.profile.total} value={n(totals.total)} unit={unit} />
       </View>
       {competitionRatings.length > 0 ? (
         <View style={styles.ratings}>
@@ -170,15 +173,14 @@ function ExerciseCard({ totals, ratings }: { totals: ExerciseTotals; ratings: Pr
   );
 }
 
-function Stat({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
-  const { m } = useI18n();
+function Stat({ label, value, unit, highlight }: { label: string; value: string; unit: string; highlight?: boolean }) {
   return (
-    <View style={styles.stat} accessible accessibilityLabel={`${label}: ${value} ${m.profile.reps}`}>
+    <View style={styles.stat} accessible accessibilityLabel={`${label}: ${value} ${unit}`}>
       <AppText variant="number" color={highlight ? colors.accent : colors.text}>
         {value}
       </AppText>
       <AppText variant="caption" color={colors.textMuted}>
-        {label}
+        {unit} · {label}
       </AppText>
     </View>
   );

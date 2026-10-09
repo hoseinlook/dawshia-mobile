@@ -14,6 +14,10 @@ export interface ParticipantScore {
   reps: number;
   rejectedReps: number;
   qualitySum: number;
+  /** Hold competitions: longest continuous hold so far (optional: older saved results lack it). */
+  holdMs?: number;
+  /** Hold competitions: the hold has broken, this participant is done. */
+  holdDone?: boolean;
 }
 
 export type MatchStatus = 'setup' | 'countdown' | 'live' | 'finished';
@@ -50,6 +54,10 @@ export type MatchAction =
   | { type: 'tick'; nowMs: number }
   | { type: 'rep'; participantId: ParticipantId; quality: number; nowMs: number }
   | { type: 'repRejected'; participantId: ParticipantId; nowMs: number }
+  /** Hold competitions: current hold length. */
+  | { type: 'hold'; participantId: ParticipantId; holdMs: number; nowMs: number }
+  /** Hold competitions: the hold broke; the participant's final hold length. */
+  | { type: 'holdBroken'; participantId: ParticipantId; holdMs: number; nowMs: number }
   | { type: 'abort'; nowMs: number };
 
 export interface ParticipantResult {

@@ -1,5 +1,6 @@
 import { listExercises } from '../../core/exercises/registry';
 import type { MatchResult } from '../../core/match/types';
+import { scoreValue } from '../../core/progress/progress';
 import { localDateString, type ExerciseTotals } from '../../core/stats/repTotals';
 import type {
   MatchHistoryRepository,
@@ -64,7 +65,8 @@ class SyncingHistoryRepository implements MatchHistoryRepository {
       .rpc('submit_practice', {
         exercise: result.exerciseId,
         timeControl: result.timeControlId,
-        reps: me.score.reps,
+        // Holds report whole seconds held (the server counts them the same way).
+        reps: scoreValue(result),
         localDate: localDateString(new Date(result.finishedAtMs)),
       })
       .catch((e: unknown) => {

@@ -7,7 +7,7 @@ import { Camera, useCameraDevice, useCameraPermission } from 'react-native-visio
 
 import type { ExerciseDefinition } from '../../core/exercises/types';
 import { remainingMs } from '../../core/match/matchReducer';
-import type { TimeControlId } from '../../core/match/timeControls';
+import { isHold, type TimeControlId } from '../../core/match/timeControls';
 import type { MatchMode } from '../../core/match/types';
 import { personalBest } from '../../core/progress/progress';
 import { cueText, exerciseText } from '../../i18n/lookup';
@@ -59,24 +59,32 @@ export function SessionScreen({ exercise, timeControlId, mode }: Props) {
     [history, exercise.id, timeControlId],
   );
 
-  // Every valid rep: voice cheer + light haptic. Passing the record: success haptic + banner.
-  const localReps = session.localParticipantId
-    ? (session.match?.scores[session.localParticipantId]?.reps ?? 0)
-    : 0;
-  const cheeredRepsRef = useRef(0);
+  // Score in the competition's unit: valid reps, or whole seconds held for holds.
+  const hold = isHold(timeControlId);
+  const myScore = session.localParticipantId ? session.match?.scores[session.localParticipantId] : undefined;
+  const liveHoldMs = session.feedback.inPosition ? (session.feedback.metrics.holdMs ?? 0) : 0;
+  const score = hold
+    ? Math.floor(Math.max(liveHoldMs, myScore?.holdMs ?? 0) / 1000)
+    : (myScore?.reps ?? 0);
+
+  // Reps: cheer + light haptic on every valid rep. Holds: every 10 seconds.
+  // Passing the record: success haptic + "New record!" banner.
+  const cheeredScoreRef = useRef(0);
   const [recordAt, setRecordAt] = useState<number | null>(null);
   useEffect(() => {
-    if (localReps > cheeredRepsRef.current) {
-      cheer();
-      if (best > 0 && cheeredRepsRef.current <= best && localReps > best) {
+    const previous = cheeredScoreRef.current;
+    if (score > previous) {
+      if (best > 0 && previous <= best && score > best) {
+        cheer();
         haptics.success();
         setRecordAt(Date.now());
-      } else {
+      } else if (!hold || Math.floor(score / 10) > Math.floor(previous / 10)) {
+        cheer();
         haptics.rep();
       }
     }
-    cheeredRepsRef.current = localReps;
-  }, [localReps, cheer, best]);
+    cheeredScoreRef.current = score;
+  }, [score, cheer, best, hold]);
 
   // Rejected rep: short warning haptic.
   const lastEvent = session.feedback.lastEvent;
@@ -120,9 +128,10 @@ export function SessionScreen({ exercise, timeControlId, mode }: Props) {
 
   const { match, feedback, nowMs } = session;
   const status = match?.status ?? 'setup';
-  const reps = localReps;
   // Leave room past the record so the marker isn't at the very end of the bar.
-  const scaleMax = Math.max(10, Math.ceil(best * 1.25), Math.ceil((reps + 1) / 10) * 10);
+  const scaleMax = hold
+    ? Math.max(30, Math.ceil(best * 1.25), Math.ceil((score + 10) / 10) * 10)
+    : Math.max(10, Math.ceil(best * 1.25), Math.ceil((score + 1) / 10) * 10);
   const showRecord = recordAt !== null && nowMs - recordAt < RECORD_FLASH_MS;
 
   const countdownLeft =
@@ -151,7 +160,7 @@ export function SessionScreen({ exercise, timeControlId, mode }: Props) {
         <View style={styles.topRow}>
           <ScoreBar
             name={m.common.you}
-            reps={reps}
+            reps={score}
             scaleMax={scaleMax}
             color={colors.accent}
             target={best}
@@ -199,6 +208,13 @@ export function SessionScreen({ exercise, timeControlId, mode }: Props) {
               <Icon name="trophy" size="xl" color={colors.gold} />
               <AppText variant="title" color={colors.gold}>
                 {m.game.newRecord}
+              </AppText>
+            </View>
+          ) : hold && status === 'live' && feedback.inPosition ? (
+            <View style={styles.holdTimer} accessibilityLiveRegion="polite">
+              <AppText style={styles.holdSeconds}>{n(score)}</AppText>
+              <AppText variant="heading" color={colors.textMuted}>
+                {m.game.holdTime}
               </AppText>
             </View>
           ) : recent?.type === 'rep' ? (
@@ -283,6 +299,16 @@ const styles = StyleSheet.create({
     fontFamily: fonts.display,
     fontSize: 88,
     lineHeight: 96,
+  },
+  holdTimer: {
+    alignItems: 'center',
+  },
+  holdSeconds: {
+    color: colors.accent,
+    fontFamily: fonts.display,
+    fontSize: 120,
+    lineHeight: 128,
+    fontVariant: ['tabular-nums'],
   },
   record: {
     alignItems: 'center',

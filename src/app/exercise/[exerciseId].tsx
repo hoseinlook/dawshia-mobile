@@ -4,7 +4,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getExercise } from '../../core/exercises/registry';
-import type { TimeControlId } from '../../core/match/timeControls';
+import { isHold, type TimeControlId } from '../../core/match/timeControls';
 import { personalBest } from '../../core/progress/progress';
 import { useHistory } from '../../features/progress/useHistory';
 import { exerciseText, timeControlText } from '../../i18n/lookup';
@@ -30,6 +30,7 @@ export default function ExerciseScreen() {
   if (!exercise || !competition) return <Redirect href="/" />;
   const text = exerciseText(m, exercise.id);
   const best = history ? personalBest(history, exercise.id, competition) : 0;
+  const hold = isHold(competition);
 
   const start = () =>
     router.push({
@@ -65,7 +66,7 @@ export default function ExerciseScreen() {
           {m.competition.title}
         </AppText>
         <AppText variant="caption" color={colors.textMuted} start>
-          {m.competition.timedRepsRule}
+          {hold ? m.competition.holdRule : m.competition.timedRepsRule}
         </AppText>
         {exercise.competitions.map((id) => {
           const tc = timeControlText(m, id);
@@ -73,11 +74,17 @@ export default function ExerciseScreen() {
           return (
             <OptionCard
               key={id}
-              icon="timer-outline"
+              icon={isHold(id) ? 'timer-sand' : 'timer-outline'}
               iconColor={colors.gold}
               title={tc.label}
               subtitle={tc.description}
-              meta={pb > 0 ? f(m.game.personalBest, { reps: pb }) : undefined}
+              meta={
+                pb > 0
+                  ? isHold(id)
+                    ? f(m.game.personalBestHold, { seconds: pb })
+                    : f(m.game.personalBest, { reps: pb })
+                  : undefined
+              }
               selected={id === competition}
               onPress={() => {
                 haptics.select();
@@ -91,7 +98,11 @@ export default function ExerciseScreen() {
         <View style={styles.goal}>
           <Icon name="trophy-outline" color={colors.gold} />
           <AppText variant="bodyBold" color={colors.gold} start style={styles.goalText}>
-            {best > 0 ? f(m.game.beatYourBest, { reps: best }) : m.game.noBestYet}
+            {best > 0
+              ? hold
+                ? f(m.game.beatYourBestHold, { seconds: best })
+                : f(m.game.beatYourBest, { reps: best })
+              : m.game.noBestYet}
           </AppText>
         </View>
 

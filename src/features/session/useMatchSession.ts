@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, u
 
 import type { ExerciseDefinition, ExerciseEvent, FormCue } from '../../core/exercises/types';
 import { computeResult, createMatchState, matchReducer } from '../../core/match/matchReducer';
-import type { TimeControlId } from '../../core/match/timeControls';
+import { isHold, type TimeControlId } from '../../core/match/timeControls';
 import type {
   MatchAction,
   MatchConfig,
@@ -17,6 +17,8 @@ import type { MatchTransport } from '../../services/types';
 /** How long the athlete must hold the start position before the countdown begins. */
 const READY_HOLD_MS = 1500;
 const TICK_MS = 100;
+/** Hold competitions: how often the current hold length is reported. */
+const HOLD_REPORT_MS = 250;
 
 export interface LiveFeedback {
   inPosition: boolean;
@@ -70,6 +72,9 @@ export function useMatchSession({ exercise, timeControlId, mode }: Options) {
   const transportRef = useRef<MatchTransport | null>(null);
   const matchRef = useRef<MatchState | null>(null);
   const readySinceRef = useRef<number | null>(null);
+  const hold = isHold(timeControlId);
+  const lastHoldMsRef = useRef(0);
+  const lastHoldReportRef = useRef(0);
   useLayoutEffect(() => {
     matchRef.current = match;
   }, [match]);
@@ -150,7 +155,9 @@ export function useMatchSession({ exercise, timeControlId, mode }: Options) {
 
       let readiness = 0;
       if (current?.status === 'setup') {
-        if (update.inPosition) {
+        // Holds start from standing (nobody holds a handstand through a countdown),
+        // so being visible is enough; rep exercises wait for the start position.
+        if (hold ? nextPose !== null : update.inPosition) {
           readySinceRef.current ??= now;
           readiness = Math.min(1, (now - readySinceRef.current) / READY_HOLD_MS);
           if (readiness >= 1) {
@@ -159,6 +166,21 @@ export function useMatchSession({ exercise, timeControlId, mode }: Options) {
           }
         } else {
           readySinceRef.current = null;
+        }
+      }
+
+      // Hold competitions: report the current hold and when it breaks.
+      if (hold && current?.status === 'live' && localParticipantId) {
+        const holdMs = update.metrics.holdMs;
+        if (update.inPosition && holdMs !== undefined) {
+          lastHoldMsRef.current = holdMs;
+          if (now - lastHoldReportRef.current >= HOLD_REPORT_MS) {
+            lastHoldReportRef.current = now;
+            act({ type: 'hold', participantId: localParticipantId, holdMs, nowMs: now });
+          }
+        } else if (lastHoldMsRef.current > 0) {
+          act({ type: 'holdBroken', participantId: localParticipantId, holdMs: lastHoldMsRef.current, nowMs: now });
+          lastHoldMsRef.current = 0;
         }
       }
 
@@ -188,7 +210,7 @@ export function useMatchSession({ exercise, timeControlId, mode }: Options) {
           comboChange === 'none' ? prev.combo : comboChange === 'reset' ? 0 : prev.combo + comboChange,
       }));
     },
-    [analyzer, act, localParticipantId],
+    [analyzer, act, localParticipantId, hold],
   );
 
   const abort = useCallback(() => act({ type: 'abort', nowMs: Date.now() }), [act]);

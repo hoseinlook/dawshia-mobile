@@ -4,7 +4,7 @@
 
 A competitive bodyweight-training app: the phone camera watches you, counts every valid rep on the device, and turns workouts into chess-style timed matches.
 
-**Current scope:** offline practice mode with **push-ups**, **pull-ups** and **muscle-ups**. The code is structured so that more exercises and online 1v1 (through `dawshia-server`) can be added without restructuring.
+**Current scope:** offline practice mode with **push-ups**, **pull-ups**, **muscle-ups** (most reps in a time control) and **handstand** (resistance: longest hold wins). The code is structured so that more exercises and online 1v1 (through `dawshia-server`) can be added without restructuring.
 
 ## Run it
 
@@ -64,6 +64,7 @@ src/
       pushup/                 push-up rules (side view, landscape)
       pullup/                 pull-up rules (front view, portrait)
       muscleup/               muscle-up rules (front view, portrait, room above the bar)
+      handstand/              handstand hold detection (portrait; inverted, arms locked, body vertical)
     match/                    time controls, match state machine, scoring
   features/
     audio/                    voice cheers after each valid rep (assets/sounds/cheers/<lang>/)
@@ -132,6 +133,21 @@ Screens and hooks only use the interfaces in `src/services/types.ts`. To go onli
    - `MatchTransport` → real-time match socket
 2. Return it from `ServicesProvider` when online.
 3. Opponent rep events arrive through `MatchTransport.subscribe` and feed the same `matchReducer`. The second score bar slot in `SessionScreen` is already reserved for them.
+
+## Competition formats
+
+Each exercise lists its competition types (`competitions` in its definition). Each type has a **format** (`src/core/match/timeControls.ts`):
+
+| Format | Types | Score | Ends when |
+|---|---|---|---|
+| `timedReps` | Bullet 1 min, Blitz 3 min, Rapid 5 min, Endurance 10 min | valid reps | the clock runs out |
+| `maxHold` | Resistance (10 min cap) | seconds held | the hold breaks (or the cap is reached) |
+
+How a hold works:
+- The countdown starts as soon as the athlete is visible.
+- The hold timer runs while the analyzer reports `inPosition`.
+- Detection drops shorter than 0.6 s don't break the hold.
+- A hold earns 2 XP per second, and records, profile totals and server stats are in seconds.
 
 ## Cheer sounds
 

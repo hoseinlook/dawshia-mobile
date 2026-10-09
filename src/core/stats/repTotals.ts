@@ -1,7 +1,8 @@
 import type { ExerciseId } from '../exercises/types';
+import { isHold } from '../match/timeControls';
 import type { MatchResult } from '../match/types';
 
-/** Rep counts the profile shows for one movement. */
+/** Totals the profile shows for one movement: valid reps, or seconds held for holds. */
 export interface ExerciseTotals {
   exerciseId: ExerciseId;
   today: number;
@@ -18,7 +19,7 @@ export function localDateString(date: Date): string {
 }
 
 /**
- * Sums the local athlete's valid reps per exercise for today, this calendar
+ * Sums the local athlete's valid reps (or seconds held, for holds) per exercise for today, this calendar
  * month and all time. Every listed exercise appears, even with zero reps.
  */
 export function summarizeReps(
@@ -36,7 +37,7 @@ export function summarizeReps(
     const entry = totals.get(result.exerciseId);
     const me = result.standings.find((s) => s.participant.isLocal);
     if (!entry || !me) continue;
-    const reps = me.score.reps;
+    const reps = isHold(result.timeControlId) ? Math.floor((me.score.holdMs ?? 0) / 1000) : me.score.reps;
     const date = localDateString(new Date(result.finishedAtMs));
     entry.total += reps;
     if (date.slice(0, 7) === month) entry.month += reps;
