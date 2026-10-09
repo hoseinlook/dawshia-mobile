@@ -19,6 +19,8 @@ import { haptics } from '../../ui/haptics';
 import { useScreenOrientation } from '../../ui/hooks/useScreenOrientation';
 import { colors, fonts, radius, spacing } from '../../ui/theme';
 import { useCheers } from '../audio/useCheers';
+import { useMatchAudio } from '../audio/useMatchAudio';
+import { useSettings } from '../settings/SettingsProvider';
 import { SkeletonOverlay } from '../pose/SkeletonOverlay';
 import { usePoseDetection } from '../pose/usePoseDetection';
 import { useHistory } from '../progress/useHistory';
@@ -51,6 +53,7 @@ export function SessionScreen({ exercise, timeControlId, mode }: Props) {
   const session = useMatchSession({ exercise, timeControlId, mode });
   const detection = usePoseDetection(session.onPose);
   const cheer = useCheers();
+  const { settings } = useSettings();
 
   // Personal best for this competition: the target to race against.
   const history = useHistory();
@@ -85,6 +88,20 @@ export function SessionScreen({ exercise, timeControlId, mode }: Props) {
     }
     cheeredScoreRef.current = score;
   }, [score, cheer, best, hold]);
+
+  // Arena music and effects for timed competitions (holds stay calm).
+  const audioMatch = session.match;
+  useMatchAudio({
+    enabled: settings.musicEnabled && !hold,
+    status: audioMatch?.status ?? 'setup',
+    remainingMs: audioMatch ? remainingMs(audioMatch, session.nowMs) : 0,
+    durationMs: audioMatch?.config.durationMs ?? 60_000,
+    countdownLeft:
+      audioMatch?.status === 'countdown' && audioMatch.countdownEndsAtMs
+        ? Math.max(1, Math.ceil((audioMatch.countdownEndsAtMs - session.nowMs) / 1000))
+        : null,
+    finishReason: audioMatch?.finishReason ?? null,
+  });
 
   // Rejected rep: short warning haptic.
   const lastEvent = session.feedback.lastEvent;

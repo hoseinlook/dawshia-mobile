@@ -45,6 +45,17 @@ export default function SettingsScreen() {
           />
         </View>
 
+        <AppText style={[styles.section, textStart]}>{m.settings.music}</AppText>
+        <View style={styles.row}>
+          <AppText style={[styles.hint, textStart]}>{m.settings.musicHint}</AppText>
+          <Switch
+            value={settings.musicEnabled}
+            onValueChange={(musicEnabled) => updateSettings({ musicEnabled })}
+            trackColor={{ true: colors.accent, false: colors.border }}
+            accessibilityLabel={m.settings.music}
+          />
+        </View>
+
         <AccountSection />
         <ServerSection />
 

@@ -7,11 +7,14 @@ export interface Settings {
   locale: Locale;
   /** Voice cheers after each valid rep. */
   soundEnabled: boolean;
+  /** Match music and sound effects (countdown, horn, final-seconds music, buzzer, fanfare). */
+  musicEnabled: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   locale: DEFAULT_LOCALE,
   soundEnabled: true,
+  musicEnabled: true,
 };
 
 const FILE_NAME = 'settings.json';
@@ -33,6 +36,8 @@ export function loadSettings(): Settings {
     locale: isLocale(raw.locale) ? raw.locale : DEFAULT_SETTINGS.locale,
     soundEnabled:
       typeof raw.soundEnabled === 'boolean' ? raw.soundEnabled : DEFAULT_SETTINGS.soundEnabled,
+    musicEnabled:
+      typeof raw.musicEnabled === 'boolean' ? raw.musicEnabled : DEFAULT_SETTINGS.musicEnabled,
   };
 }
 

@@ -6,7 +6,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { MatchResult } from '../core/match/types';
 import { isHold } from '../core/match/timeControls';
 import { computeGains, scoreValue, type SessionGains } from '../core/progress/progress';
+import { playFanfare } from '../features/audio/useMatchAudio';
 import { AchievementBadge } from '../features/progress/AchievementBadge';
+import { useSettings } from '../features/settings/SettingsProvider';
 import { exerciseText, timeControlText } from '../i18n/lookup';
 import { useI18n } from '../i18n/useI18n';
 import { useServices } from '../services/ServicesProvider';
@@ -27,6 +29,7 @@ export default function ResultsScreen() {
   const { m, f, n, dir } = useI18n();
   const { matchId } = useLocalSearchParams<{ matchId: string }>();
   const { history } = useServices();
+  const { settings } = useSettings();
   const [data, setData] = useState<{ result: MatchResult; all: MatchResult[] } | null | undefined>(undefined);
 
   useEffect(() => {
@@ -40,12 +43,14 @@ export default function ResultsScreen() {
     [data],
   );
 
-  // Celebrate wins with one success haptic.
+  // Celebrate wins with one success haptic, plus a fanfare for records and level-ups.
+  const musicEnabled = settings.musicEnabled;
   useEffect(() => {
     if (gains && (gains.isPersonalBest || gains.leveledUp || gains.newAchievements.length > 0 || gains.goalReached)) {
       haptics.success();
     }
-  }, [gains]);
+    if (gains && musicEnabled && (gains.isPersonalBest || gains.leveledUp)) playFanfare();
+  }, [gains, musicEnabled]);
 
   if (data === undefined) return <View style={styles.root} />;
   if (data === null || !gains) {

@@ -156,6 +156,17 @@ How a hold works:
 - Detection drops shorter than 0.6 s don't break the hold.
 - A hold earns 2 XP per second, and records, profile totals and server stats are in seconds.
 
+## Match sounds
+
+Timed (rep) competitions get arena-style audio (`src/features/audio/useMatchAudio.ts`):
+- **Start:** 3-2-1 countdown beeps, then a start horn.
+- **During the match:** a background beat that switches to a faster, louder **intense loop** for the final stretch (the last 15 s of a 1-minute match, the last 30 s of longer ones), plus clock ticks in the final 5 s.
+- **End:** a buzzer when time runs out, and a fanfare on the results screen for a new record or level-up.
+
+Resistance holds stay quiet apart from the voice cheers.
+
+All match sounds are original and synthesized by `scripts/generate-sounds.py` (no dependencies; run `python3 scripts/generate-sounds.py` to regenerate or tweak them). Loops are WAV so they repeat without gaps. You can turn them off in Settings → "Match music & effects".
+
 ## Cheer sounds
 
 After every valid rep a random voice clip plays in the current language (never the same one twice in a row). Turn it off in Settings.

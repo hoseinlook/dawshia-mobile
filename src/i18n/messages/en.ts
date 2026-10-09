@@ -57,6 +57,8 @@ export const en: Messages = {
     },
   },
   settings: {
+    music: 'Match music & effects',
+    musicHint: 'Countdown, start horn, intense music in the final seconds and the final buzzer.',
     account: 'Account',
     signedInAs: 'Signed in as {username}',
     offlineMode: 'Offline mode — not signed in',
