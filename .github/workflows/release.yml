@@ -1,19 +1,33 @@
 name: Release
 
-# Push a tag like v0.1.0 to build the Android APK and publish a GitHub Release:
-#   git tag v0.1.0 && git push origin v0.1.0
+# Builds the Android APK and publishes it on GitHub Releases:
+#  - every push to master/main → updates the rolling pre-release "Latest build"
+#    (tag `latest-build`, asset `dawshia-latest.apk`)
+#  - every version tag (git tag v0.1.0 && git push origin v0.1.0) → a versioned release
 on:
   push:
+    branches: [master, main]
     tags: ['v*']
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+  workflow_dispatch: # "Run workflow" button in the Actions tab
 
 permissions:
-  contents: write # create the release and upload the APK
+  contents: write # create releases, move the latest-build tag, upload the APK
+
+concurrency:
+  # A newer push replaces an unfinished build of the same branch; tag builds always finish.
+  group: release-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 jobs:
   android:
-    name: Build Android APK
+    name: Build and publish APK
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
+    env:
+      IS_TAG: ${{ startsWith(github.ref, 'refs/tags/') }}
     steps:
       - uses: actions/checkout@v4
 
@@ -35,15 +49,20 @@ jobs:
           npm run typecheck
           npm test -- --ci
 
-      - name: Set version from tag
-        # v1.2.3 → versionName 1.2.3; versionCode = workflow run number (always increasing).
+      - name: Set version
+        # Tag v1.2.3 → versionName 1.2.3; branch builds → <app.json version>-build.<run>.
+        # versionCode = workflow run number, so every build can update the previous one.
         run: |
           node -e '
             const fs = require("fs");
             const app = JSON.parse(fs.readFileSync("app.json", "utf8"));
-            app.expo.version = process.env.GITHUB_REF_NAME.replace(/^v/, "");
-            app.expo.android = { ...app.expo.android, versionCode: Number(process.env.GITHUB_RUN_NUMBER) };
+            const run = Number(process.env.GITHUB_RUN_NUMBER);
+            app.expo.version = process.env.IS_TAG === "true"
+              ? process.env.GITHUB_REF_NAME.replace(/^v/, "")
+              : `${app.expo.version}-build.${run}`;
+            app.expo.android = { ...app.expo.android, versionCode: run };
             fs.writeFileSync("app.json", JSON.stringify(app, null, 2));
+            console.log(`versionName ${app.expo.version}, versionCode ${run}`);
           '
 
       - name: Generate native project
@@ -54,8 +73,8 @@ jobs:
         run: ./gradlew assembleRelease --no-daemon
 
       - name: Sign APK
-        # With the ANDROID_KEYSTORE_* secrets set, the APK is signed with your release key,
-        # so new versions install as updates. Without them it stays debug-signed.
+        # With the ANDROID_KEYSTORE_* secrets, the APK is signed with your release key.
+        # Without them it keeps the template's debug signature (same as local builds).
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -63,9 +82,9 @@ jobs:
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           APK=android/app/build/outputs/apk/release/app-release.apk
-          OUT="dawshia-${GITHUB_REF_NAME}.apk"
+          if [ "$IS_TAG" = "true" ]; then OUT="dawshia-${GITHUB_REF_NAME}.apk"; else OUT="dawshia-latest.apk"; fi
           if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "::warning::ANDROID_KEYSTORE_BASE64 is not set — publishing a debug-signed APK."
+            echo "::notice::ANDROID_KEYSTORE_BASE64 is not set — publishing a debug-signed APK."
             cp "$APK" "$OUT"
           else
             BUILD_TOOLS="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
@@ -78,9 +97,37 @@ jobs:
             "$BUILD_TOOLS/apksigner" verify --print-certs "$OUT"
             rm -f release.keystore aligned.apk
           fi
+          ls -la "$OUT"
           echo "APK=$OUT" >> "$GITHUB_ENV"
 
-      - name: Publish GitHub Release
+      - name: Keep APK as a build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APK }}
+          path: ${{ env.APK }}
+          retention-days: 14
+
+      - name: Move the latest-build tag to this commit
+        if: env.IS_TAG != 'true'
+        run: |
+          git tag -f latest-build "$GITHUB_SHA"
+          git push -f origin refs/tags/latest-build
+
+      - name: Publish "Latest build" pre-release
+        if: env.IS_TAG != 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest-build
+          name: Latest build (${{ github.ref_name }})
+          prerelease: true
+          make_latest: false
+          files: ${{ env.APK }}
+          body: |
+            Automatic build of `${{ github.ref_name }}` at ${{ github.sha }} (run #${{ github.run_number }}).
+            Download **dawshia-latest.apk** below and open it on your Android phone to install or update.
+
+      - name: Publish versioned release
+        if: env.IS_TAG == 'true'
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ env.APK }}

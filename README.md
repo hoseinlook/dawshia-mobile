@@ -144,14 +144,20 @@ The thresholds are in `PUSHUP_THRESHOLDS` (`src/core/exercises/pushup/pushupAnal
 ## CI and releases (GitHub)
 
 - **CI** (`.github/workflows/ci.yml`) runs typecheck, lint and tests on every push to `main` and every pull request.
-- **Release** (`.github/workflows/release.yml`): pushing a version tag builds the Android APK on GitHub and attaches it to a GitHub Release:
+- **Release** (`.github/workflows/release.yml`) builds the Android APK on GitHub and publishes it on **Releases**:
+  - **Every push to `master`/`main`** updates the pre-release **"Latest build"**, whose `dawshia-latest.apk` is always the newest build (version `0.1.0-build.<run>`).
+  - **Every version tag** creates a proper release with `dawshia-vX.Y.Z.apk`:
 
-  ```sh
-  git tag v0.1.0
-  git push origin v0.1.0
-  ```
+    ```sh
+    git tag v0.1.0
+    git push origin v0.1.0
+    ```
 
-  The tag sets the app's version name (`0.1.0`). The workflow run number becomes the `versionCode`, so it always increases. Tags with a hyphen (e.g. `v0.2.0-beta.1`) are published as pre-releases.
+  - You can also start a build from the **Actions** tab ("Run workflow").
+
+  The workflow run number is used as the `versionCode`, so every build installs as an update over the previous one. Pushes that only change docs don't trigger a build. Each build is also kept as a downloadable artifact for 14 days.
+
+  Android builds take a while (≈20–40 min on GitHub's runners). Private repos have a monthly Actions-minutes quota, so pushing very often uses it up faster.
 
 ### Release signing (one-time setup)
 
@@ -172,7 +178,7 @@ Add these **repository secrets** (GitHub → Settings → Secrets and variables 
 | `ANDROID_KEY_ALIAS` | `dawshia` |
 | `ANDROID_KEY_PASSWORD` | the key password |
 
-Without these secrets the release still works, but the APK is debug-signed (a warning appears in the run).
+Without these secrets the release still works, and the APK keeps the debug signature of Expo's template. That's the same key your local builds use, so updates install fine on your own phones, but it isn't suitable for Google Play.
 
 **Never commit the keystore.** `*.jks`, `*.keystore` and `*.p12` files are git-ignored.
 
