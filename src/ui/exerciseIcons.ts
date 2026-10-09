@@ -6,6 +6,10 @@ const ICONS: Record<string, IconName> = {
   pullup: 'human-handsup',
   muscleup: 'lightning-bolt',
   handstand: 'human-handsdown',
+  dip: 'arrow-collapse-down',
+  handstandpushup: 'swap-vertical-bold',
+  lsit: 'alpha-l-box',
+  frontlever: 'arrow-expand-horizontal',
 };
 
 export function exerciseIcon(exerciseId: string): IconName {

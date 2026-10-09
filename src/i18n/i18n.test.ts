@@ -19,6 +19,13 @@ const CUE_CODES = [
   'kickUp',
   'lockArms',
   'straightBody',
+  'getOnBars',
+  'goDeeper',
+  'headToFloor',
+  'pressUp',
+  'sitUpright',
+  'liftLegs',
+  'raiseBody',
 ];
 
 describe('format', () => {

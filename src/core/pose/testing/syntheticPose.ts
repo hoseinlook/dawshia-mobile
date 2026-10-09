@@ -210,6 +210,8 @@ export function barPose(height: number, timestampMs = 0, standing = false): Pose
 export interface HandstandOptions {
   /** Elbow angle in degrees (180 = locked). */
   elbowAngle?: number;
+  /** Distance (px) from the shoulders down to the nose; smaller = head stays higher. */
+  headOffset?: number;
   /** Degrees the body leans away from vertical. */
   lean?: number;
   /** Upright standing pose instead of inverted. */
@@ -218,7 +220,7 @@ export interface HandstandOptions {
 }
 
 /** Side-ish view of a handstand in a portrait frame (hands on the floor at y=1150). */
-export function handstandPose({ elbowAngle = 175, lean = 0, standing = false, timestampMs = 0 }: HandstandOptions = {}): Pose {
+export function handstandPose({ elbowAngle = 175, headOffset = 90, lean = 0, standing = false, timestampMs = 0 }: HandstandOptions = {}): Pose {
   const px: Partial<Record<(typeof KEYPOINT_NAMES)[number], [number, number]>> = {};
   const floor = 1150;
   const half = (elbowAngle * Math.PI) / 360;
@@ -253,7 +255,7 @@ export function handstandPose({ elbowAngle = 175, lean = 0, standing = false, ti
     px[`${side}Eye`] = [x, shoulder[1] + 80];
     px[`${side}Ear`] = [x, shoulder[1] + 70];
   }
-  px.nose = standing ? [360, 525] : [360, px.leftShoulder![1] + 90];
+  px.nose = standing ? [360, 525] : [360, px.leftShoulder![1] + headOffset];
 
   const keypoints = {} as Keypoints;
   for (const name of KEYPOINT_NAMES) {
@@ -261,4 +263,99 @@ export function handstandPose({ elbowAngle = 175, lean = 0, standing = false, ti
     keypoints[name] = { x: x / HANG_FRAME_W, y: y / HANG_FRAME_H, score: 0.9 };
   }
   return { keypoints, frameWidth: HANG_FRAME_W, frameHeight: HANG_FRAME_H, timestampMs };
+}
+
+type Points = Partial<Record<(typeof KEYPOINT_NAMES)[number], [number, number]>>;
+
+/** Same points for both sides (side view), left side more confident. */
+function sideViewFrom(points: Record<string, [number, number]>, timestampMs: number): Pose {
+  const keypoints = {} as Keypoints;
+  const px: Points = {};
+  for (const [joint, xy] of Object.entries(points)) {
+    if (joint === 'nose') px.nose = xy;
+    else {
+      const cap = joint.charAt(0).toUpperCase() + joint.slice(1);
+      px[`left${cap}` as keyof Points] = xy;
+      px[`right${cap}` as keyof Points] = xy;
+    }
+  }
+  for (const name of KEYPOINT_NAMES) {
+    const [x, y] = px[name] ?? [0, 0];
+    keypoints[name] = { x: x / HANG_FRAME_W, y: y / HANG_FRAME_H, score: name.startsWith('right') ? 0.5 : 0.9 };
+  }
+  return { keypoints, frameWidth: HANG_FRAME_W, frameHeight: HANG_FRAME_H, timestampMs };
+}
+
+/** Side-view dip on parallel bars: forearm vertical, upper arm rotating with the elbow angle. */
+export function dipPose(elbowAngle: number, timestampMs = 0, lying = false): Pose {
+  if (lying) {
+    return sideViewFrom(
+      { shoulder: [200, 900], elbow: [200, 1000], wrist: [200, 1100], hip: [450, 900], knee: [600, 900], ankle: [750, 900], nose: [110, 900] },
+      timestampMs,
+    );
+  }
+  const wrist: [number, number] = [360, 700];
+  const elbow: [number, number] = [360, 700 - HANG_ARM];
+  const t = (elbowAngle * Math.PI) / 180;
+  const shoulder: [number, number] = [elbow[0] + HANG_ARM * Math.sin(t), elbow[1] + HANG_ARM * Math.cos(t)];
+  const hip: [number, number] = [shoulder[0], shoulder[1] + 250];
+  return sideViewFrom(
+    {
+      wrist,
+      elbow,
+      shoulder,
+      hip,
+      knee: [hip[0] + 30, hip[1] + 150],
+      ankle: [hip[0] + 30, hip[1] + 300],
+      nose: [shoulder[0] + 20, shoulder[1] - HEAD_HEIGHT],
+    },
+    timestampMs,
+  );
+}
+
+/** Side-view L-sit: hands on the floor, torso up, legs out at `legDrop` degrees below horizontal. */
+export function lsitPose({ legDrop = 0, elbowAngle = 175, timestampMs = 0 } = {}): Pose {
+  const half = (elbowAngle * Math.PI) / 360;
+  const span = 2 * HANG_ARM * Math.sin(half);
+  const wrist: [number, number] = [400, 1000];
+  const shoulder: [number, number] = [400, 1000 - span];
+  const elbow: [number, number] = [400 - HANG_ARM * Math.cos(half), 1000 - span / 2];
+  const hip: [number, number] = [shoulder[0] + 10, shoulder[1] + 200];
+  const d = (legDrop * Math.PI) / 180;
+  return sideViewFrom(
+    {
+      wrist,
+      elbow,
+      shoulder,
+      hip,
+      knee: [hip[0] + Math.cos(d) * 170, hip[1] + Math.sin(d) * 170],
+      ankle: [hip[0] + Math.cos(d) * 340, hip[1] + Math.sin(d) * 340],
+      nose: [shoulder[0], shoulder[1] - HEAD_HEIGHT],
+    },
+    timestampMs,
+  );
+}
+
+/** Side-view front lever: hands on a bar, body at `drop` degrees below horizontal, legs piked by `pike`. */
+export function frontLeverPose({ drop = 0, pike = 0, elbowAngle = 175, timestampMs = 0 } = {}): Pose {
+  const half = (elbowAngle * Math.PI) / 360;
+  const span = 2 * HANG_ARM * Math.sin(half);
+  const wrist: [number, number] = [100, 300];
+  const shoulder: [number, number] = [100, 300 + span];
+  const elbow: [number, number] = [100 - HANG_ARM * Math.cos(half), 300 + span / 2];
+  const d = (drop * Math.PI) / 180;
+  const l = ((drop + pike) * Math.PI) / 180;
+  const hip: [number, number] = [shoulder[0] + Math.cos(d) * 250, shoulder[1] + Math.sin(d) * 250];
+  return sideViewFrom(
+    {
+      wrist,
+      elbow,
+      shoulder,
+      hip,
+      knee: [hip[0] + Math.cos(l) * 135, hip[1] + Math.sin(l) * 135],
+      ankle: [hip[0] + Math.cos(l) * 270, hip[1] + Math.sin(l) * 270],
+      nose: [shoulder[0] - 80, shoulder[1]],
+    },
+    timestampMs,
+  );
 }

@@ -143,6 +143,46 @@ export const en: Messages = {
         'The clock starts when you are balanced and stops when you come down.',
       ],
     },
+    dip: {
+      name: 'Deep Dip',
+      description: 'On parallel bars, lower from locked arms until your shoulder is below your elbow, then press back up.',
+      instructions: [
+        'Stand your phone upright beside the parallel bars so it sees you from the side.',
+        'Step back 2–3 meters so your whole body and the bars are on screen.',
+        'Get on the bars with arms locked and body upright.',
+        'Each rep: down until the shoulder is below the elbow, up to full lockout.',
+      ],
+    },
+    handstandpushup: {
+      name: 'Handstand Push-up',
+      description: 'In a handstand, lower until your head nearly touches the floor, then press back to locked arms.',
+      instructions: [
+        'Stand your phone upright on the floor so it sees you from the side; a wall works too.',
+        'Step back 2–3 meters so your whole body stays on screen when inverted.',
+        'Kick up into a handstand with arms locked.',
+        'Each rep: lower until the head nearly touches the floor, press up to full lockout.',
+      ],
+    },
+    lsit: {
+      name: 'L-sit',
+      description: 'Support yourself on locked arms and hold your legs straight out, parallel to the floor.',
+      instructions: [
+        'Turn your phone sideways and place it beside you so it sees you from the side.',
+        'Step back about 2 meters so your whole body and legs are on screen.',
+        'Put your hands next to your hips on the floor or parallettes and press up.',
+        'Lift your legs straight out to horizontal and hold as long as you can.',
+      ],
+    },
+    frontlever: {
+      name: 'Front Lever',
+      description: 'Hang from the bar on straight arms and hold your body straight and horizontal.',
+      instructions: [
+        'Turn your phone sideways and place it facing the side of the bar.',
+        'Step back 2–3 meters so the bar and your whole body are on screen.',
+        'Hang from the bar with arms locked.',
+        'Raise your straight body to horizontal and hold as long as you can.',
+      ],
+    },
   },
   game: {
     seconds: '{seconds} s',
@@ -195,6 +235,13 @@ export const en: Messages = {
     pushups50: { title: 'Push-up Machine', description: '50 push-ups in one match.' },
   },
   cues: {
+    getOnBars: 'Get on the bars — arms straight',
+    goDeeper: 'Go deeper — shoulder below the elbow',
+    headToFloor: 'Lower — head close to the floor',
+    pressUp: 'Press up on your hands',
+    sitUpright: 'Keep your torso upright',
+    liftLegs: 'Lift your legs straight to horizontal',
+    raiseBody: 'Raise your body to horizontal',
     kickUp: 'Kick up into a handstand',
     lockArms: 'Lock your arms',
     straightBody: 'Straighten your body — stay vertical',

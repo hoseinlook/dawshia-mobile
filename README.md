@@ -4,7 +4,9 @@
 
 A competitive bodyweight-training app: the phone camera watches you, counts every valid rep on the device, and turns workouts into chess-style timed matches.
 
-**Current scope:** offline practice mode with **push-ups**, **pull-ups**, **muscle-ups** (most reps in a time control) and **handstand** (resistance: longest hold wins). The code is structured so that more exercises and online 1v1 (through `dawshia-server`) can be added without restructuring.
+**Current scope:** offline practice mode with:
+- **Most reps in a time control:** push-ups, pull-ups, deep parallel-bar dips, muscle-ups and handstand push-ups.
+- **Resistance (longest hold wins):** handstand, L-sit and front lever. The code is structured so that more exercises and online 1v1 (through `dawshia-server`) can be added without restructuring.
 
 ## Run it
 
@@ -64,7 +66,12 @@ src/
       pushup/                 push-up rules (side view, landscape)
       pullup/                 pull-up rules (front view, portrait)
       muscleup/               muscle-up rules (front view, portrait, room above the bar)
-      handstand/              handstand hold detection (portrait; inverted, arms locked, body vertical)
+      dip/                    deep dips (side view; shoulder must go below the elbow)
+      handstandpushup/        handstand push-ups (side view; head near the floor)
+      handstand/              handstand hold (inverted, arms locked, body vertical)
+      lsit/                   L-sit hold (arms locked, torso upright, legs horizontal)
+      frontlever/             front lever hold (hanging, body straight and horizontal)
+      holdAnalyzer.ts         shared hold timing (grace period, hold length) for all holds
     match/                    time controls, match state machine, scoring
   features/
     audio/                    voice cheers after each valid rep (assets/sounds/cheers/<lang>/)
