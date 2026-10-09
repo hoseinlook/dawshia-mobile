@@ -1,0 +1,88 @@
+name: Release
+
+# Push a tag like v0.1.0 to build the Android APK and publish a GitHub Release:
+#   git tag v0.1.0 && git push origin v0.1.0
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write # create the release and upload the APK
+
+jobs:
+  android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+
+      - run: npm ci
+
+      - name: Run checks
+        run: |
+          npm run typecheck
+          npm test -- --ci
+
+      - name: Set version from tag
+        # v1.2.3 → versionName 1.2.3; versionCode = workflow run number (always increasing).
+        run: |
+          node -e '
+            const fs = require("fs");
+            const app = JSON.parse(fs.readFileSync("app.json", "utf8"));
+            app.expo.version = process.env.GITHUB_REF_NAME.replace(/^v/, "");
+            app.expo.android = { ...app.expo.android, versionCode: Number(process.env.GITHUB_RUN_NUMBER) };
+            fs.writeFileSync("app.json", JSON.stringify(app, null, 2));
+          '
+
+      - name: Generate native project
+        run: npx expo prebuild --platform android --clean --no-install
+
+      - name: Build release APK
+        working-directory: android
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Sign APK
+        # With the ANDROID_KEYSTORE_* secrets set, the APK is signed with your release key,
+        # so new versions install as updates. Without them it stays debug-signed.
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          OUT="dawshia-${GITHUB_REF_NAME}.apk"
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::warning::ANDROID_KEYSTORE_BASE64 is not set — publishing a debug-signed APK."
+            cp "$APK" "$OUT"
+          else
+            BUILD_TOOLS="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+            echo "$KEYSTORE_BASE64" | base64 --decode > release.keystore
+            "$BUILD_TOOLS/zipalign" -f -p 4 "$APK" aligned.apk
+            "$BUILD_TOOLS/apksigner" sign \
+              --ks release.keystore --ks-pass env:KEYSTORE_PASSWORD \
+              --ks-key-alias "$KEY_ALIAS" --key-pass env:KEY_PASSWORD \
+              --out "$OUT" aligned.apk
+            "$BUILD_TOOLS/apksigner" verify --print-certs "$OUT"
+            rm -f release.keystore aligned.apk
+          fi
+          echo "APK=$OUT" >> "$GITHUB_ENV"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.APK }}
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}

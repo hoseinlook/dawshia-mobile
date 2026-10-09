@@ -1,0 +1,160 @@
+/**
+ * Persian (default language). This file is the source of truth for the
+ * message shape: every other language must provide the same keys.
+ *
+ * Placeholders like `{exercise}` are filled by `format()`.
+ */
+export const fa = {
+  common: {
+    back: 'بازگشت',
+    home: 'خانه',
+    you: 'شما',
+  },
+  home: {
+    profile: 'پروفایل',
+    tagline: 'هر تکرار، یک ضربه.',
+    chooseMovement: 'حرکت را انتخاب کن',
+    startPractice: 'شروع تمرین',
+    rankedTitle: 'مسابقه رتبه‌ای ۱ به ۱',
+    rankedText: 'با ورزشکاری هم‌سطح خودت روبه‌رو شو و تکرار به تکرار بجنگ. به‌زودی.',
+    settings: 'تنظیمات',
+  },
+  competition: {
+    title: 'نوع مسابقه',
+    timedRepsRule: 'بیشترین تکرار صحیح تا پایان زمان برنده است.',
+  },
+  profile: {
+    title: 'پروفایل',
+    today: 'امروز',
+    month: 'این ماه',
+    total: 'کل',
+    reps: 'تکرار',
+    fromServer: 'همگام با سرور',
+    fromDevice: 'آمار این گوشی',
+    serverUnreachable: 'سرور در دسترس نیست — آمار ذخیره‌شده در این گوشی نمایش داده می‌شود.',
+    ratings: 'امتیاز رتبه‌ای',
+    loadError: 'بارگذاری پروفایل ناموفق بود.',
+    retry: 'تلاش دوباره',
+  },
+  auth: {
+    signInTab: 'ورود',
+    signUpTab: 'ثبت‌نام',
+    username: 'نام کاربری',
+    email: 'ایمیل',
+    password: 'رمز عبور',
+    signInButton: 'ورود',
+    signUpButton: 'ساخت حساب',
+    continueOffline: 'ادامه بدون حساب (آفلاین)',
+    offlineHint: 'در حالت آفلاین، آمار فقط روی همین گوشی ذخیره می‌شود.',
+    errorDetail: 'جزئیات: {detail}',
+    errors: {
+      invalidEmail: 'ایمیل معتبر نیست.',
+      passwordTooShort: 'رمز عبور باید حداقل ۸ کاراکتر باشد.',
+      invalidUsername: 'نام کاربری باید ۳ تا ۲۰ حرف انگلیسی، عدد، _ یا . باشد.',
+      wrongCredentials: 'ایمیل یا رمز عبور اشتباه است.',
+      usernameTaken: 'این نام کاربری قبلاً گرفته شده.',
+      emailTaken: 'با این ایمیل قبلاً حساب ساخته شده.',
+      network: 'اتصال به سرور برقرار نشد.',
+      unknown: 'خطایی رخ داد. دوباره تلاش کن.',
+    },
+  },
+  settings: {
+    account: 'حساب کاربری',
+    signedInAs: 'وارد شده با نام {username}',
+    offlineMode: 'حالت آفلاین — وارد حساب نشده‌ای',
+    signOut: 'خروج از حساب',
+    signIn: 'ورود به حساب',
+    server: 'سرور',
+    testConnection: 'بررسی اتصال',
+    testing: 'در حال بررسی…',
+    connected: 'متصل — {ms} میلی‌ثانیه',
+    notConnected: 'اتصال برقرار نشد: {error}',
+    sound: 'صدای تشویق',
+    soundHint: 'بعد از هر تکرار صحیح، یک صدا تشویقت می‌کند.',
+    title: 'تنظیمات',
+    language: 'زبان',
+  },
+  session: {
+    cameraPermission: 'داوشیا برای شمردن حرکت‌هایت به دوربین نیاز دارد.',
+    allowCamera: 'اجازه دسترسی به دوربین',
+    noCamera: 'دوربینی پیدا نشد.',
+    matchError: 'مسابقه شروع نشد. دوباره تلاش کن.',
+    detectorError: 'بارگذاری مدل تشخیص بدن ناموفق بود.',
+    practice: 'تمرین',
+    quit: 'خروج',
+    setupTitle: 'آماده‌شدن برای {exercise}',
+    preparing: 'در حال آماده‌سازی دوربین…',
+    holdIt: 'همین‌طور بمان… الان شروع می‌شود',
+    lookingForYou: 'در حال پیدا کردنت…',
+    elbowAngle: 'آرنج {angle}°',
+  },
+  results: {
+    notFound: 'نتیجه پیدا نشد.',
+    stoppedEarly: 'زودتر متوقف شد',
+    validReps: 'تکرار صحیح',
+    formScore: 'امتیاز فرم',
+    rejected: 'رد شده',
+    accuracy: 'دقت',
+    goAgain: 'دوباره',
+  },
+  timeControls: {
+    bullet: { label: 'گلوله‌ای', description: '۱ دقیقه · با تمام قدرت' },
+    blitz: { label: 'برق‌آسا', description: '۳ دقیقه · سریع و پرفشار' },
+    rapid: { label: 'سریع', description: '۵ دقیقه · انرژی‌ات را تقسیم کن' },
+    endurance: { label: 'استقامتی', description: '۱۰ دقیقه · نبرد طولانی' },
+  },
+  exercises: {
+    pushup: {
+      name: 'شنا سوئدی',
+      description: 'سینه تا نزدیک زمین، بالا با دست‌های صاف، بدن در یک خط.',
+      instructions: [
+        'گوشی را افقی کن و روی زمین به چیزی محکم تکیه بده.',
+        'حدود ۲ متر فاصله بگیر طوری که پهلویت رو به دوربین باشد.',
+        'تمام بدنت — از سر تا پا — باید در تصویر باشد.',
+        'برای شروع، در حالت پلانک با دست‌های صاف قرار بگیر.',
+      ],
+    },
+    pullup: {
+      name: 'بارفیکس',
+      description: 'از آویزان کامل با دست‌های صاف، تا چانه بالای میله.',
+      instructions: [
+        'گوشی را عمودی، روبه‌روی میله روی زمین یا سه‌پایه قرار بده.',
+        'حدود ۲ تا ۳ متر فاصله بگیر تا میله و تمام بدنت در تصویر باشد.',
+        'رو به دوربین از میله آویزان شو.',
+        'برای شروع، با دست‌های کاملاً صاف آویزان بمان.',
+      ],
+    },
+    muscleup: {
+      name: 'ماسل‌آپ',
+      description: 'از آویزان کامل، بالای میله برو و با دست‌های صاف قفل کن.',
+      instructions: [
+        'گوشی را عمودی، روبه‌روی میله روی زمین یا سه‌پایه قرار بده.',
+        'آن‌قدر عقب برو که بالای میله هم جا داشته باشد — بدنت باید بالای میله هم دیده شود.',
+        'رو به دوربین از میله آویزان شو.',
+        'برای شروع، با دست‌های کاملاً صاف آویزان بمان.',
+      ],
+    },
+  },
+  cues: {
+    lockOut: 'بالای میله دست‌ها را کامل صاف کن',
+    notVisibleFront: 'رو به دوربین، کل بدنت را نشان بده',
+    getOnBar: 'از میله آویزان شو',
+    chinOverBar: 'چانه را بالای میله ببر',
+    fullHang: 'پایین کامل — دست‌ها صاف',
+    notVisible: 'از پهلو، کل بدنت را نشان بده',
+    getInPlank: 'در حالت پلانک قرار بگیر',
+    goLower: 'پایین‌تر برو — سینه تا نزدیک زمین',
+    tooFast: 'خیلی سریع — حرکت را کنترل کن',
+    hipsSag: 'باسنت را بالا بیاور — بدن صاف',
+    hipsPike: 'باسنت را پایین بیاور — بدن صاف',
+  },
+};
+
+/** Same shape as `fa`, with plain `string` / `string[]` leaves. */
+type Widen<T> = T extends string
+  ? string
+  : T extends readonly string[]
+    ? string[]
+    : { [K in keyof T]: Widen<T[K]> };
+
+export type Messages = Widen<typeof fa>;
