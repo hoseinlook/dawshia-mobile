@@ -195,6 +195,23 @@ The thresholds are in `PUSHUP_THRESHOLDS` (`src/core/exercises/pushup/pushupAnal
 
   Android builds take a while (≈20–40 min on GitHub's runners). Private repos have a monthly Actions-minutes quota, so pushing very often uses it up faster.
 
+### iOS builds
+
+Version tags (and manual "Run workflow" runs) also build an **iOS `.ipa`** on GitHub's macOS runners and attach it to the release. iOS isn't built on every push, because macOS runners cost 10× Actions minutes on private repos.
+
+**Without Apple signing secrets** (the default), the IPA is **unsigned**. Install it on your iPhone with [Sideloadly](https://sideloadly.io) or [AltStore](https://altstore.io), which sign it with your own Apple ID. With a free Apple ID, the app must be re-installed every 7 days.
+
+**With an Apple Developer account** ($99/year), add these repository secrets to get a **signed** IPA:
+
+| Secret | Value |
+|---|---|
+| `IOS_CERTIFICATE_P12_BASE64` | your *Apple Distribution* (or *Apple Development*) certificate exported from Keychain as `.p12`, then `base64 -i cert.p12` |
+| `IOS_CERTIFICATE_PASSWORD` | the `.p12` export password |
+| `IOS_PROVISIONING_PROFILE_BASE64` | a provisioning profile for `com.dawshia.app` (Ad Hoc, with your devices' UDIDs), as `base64 -i profile.mobileprovision` |
+| `IOS_EXPORT_METHOD` | optional: `release-testing` (Ad Hoc, the default), `debugging` (development) or `app-store-connect` |
+
+The build logic is in `scripts/ci/build-ios.sh`. It signs only the app target manually, so the CocoaPods targets aren't affected.
+
 ### Release signing (one-time setup)
 
 Android only installs an update over an existing app if both are signed with the **same key**. Create a release key once and keep it safe; if it's lost, users must uninstall to update.

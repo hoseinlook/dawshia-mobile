@@ -1,9 +1,14 @@
 name: Release
 
-# Builds the Android APK and publishes it on GitHub Releases:
-#  - every push to master/main → updates the rolling pre-release "Latest build"
+# Builds the apps and publishes them on GitHub Releases.
+#  - every push to master/main → Android APK on the rolling pre-release "Latest build"
 #    (tag `latest-build`, asset `dawshia-latest.apk`)
 #  - every version tag (git tag v0.1.0 && git push origin v0.1.0) → a versioned release
+#    with the Android APK and the iOS IPA
+#  - "Run workflow" in the Actions tab → both apps on "Latest build"
+#
+# iOS runs on macOS runners, which cost 10× Actions minutes on private repos,
+# so it only builds for tags and manual runs.
 on:
   push:
     branches: [master, main]
@@ -11,23 +16,25 @@ on:
     paths-ignore:
       - '**.md'
       - 'LICENSE'
-  workflow_dispatch: # "Run workflow" button in the Actions tab
+  workflow_dispatch:
 
 permissions:
-  contents: write # create releases, move the latest-build tag, upload the APK
+  contents: write # create releases, move the latest-build tag, upload assets
 
 concurrency:
   # A newer push replaces an unfinished build of the same branch; tag builds always finish.
   group: release-${{ github.ref }}
   cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
+env:
+  # Asset names: dawshia-v1.2.3.apk / .ipa for tags, dawshia-latest.* otherwise.
+  LABEL: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'latest' }}
+
 jobs:
   android:
-    name: Build and publish APK
+    name: Android APK
     runs-on: ubuntu-latest
     timeout-minutes: 90
-    env:
-      IS_TAG: ${{ startsWith(github.ref, 'refs/tags/') }}
     steps:
       - uses: actions/checkout@v7
 
@@ -53,20 +60,7 @@ jobs:
           npm test -- --ci
 
       - name: Set version
-        # Tag v1.2.3 → versionName 1.2.3; branch builds → <app.json version>-build.<run>.
-        # versionCode = workflow run number, so every build can update the previous one.
-        run: |
-          node -e '
-            const fs = require("fs");
-            const app = JSON.parse(fs.readFileSync("app.json", "utf8"));
-            const run = Number(process.env.GITHUB_RUN_NUMBER);
-            app.expo.version = process.env.IS_TAG === "true"
-              ? process.env.GITHUB_REF_NAME.replace(/^v/, "")
-              : `${app.expo.version}-build.${run}`;
-            app.expo.android = { ...app.expo.android, versionCode: run };
-            fs.writeFileSync("app.json", JSON.stringify(app, null, 2));
-            console.log(`versionName ${app.expo.version}, versionCode ${run}`);
-          '
+        run: node scripts/ci/set-version.js
 
       - name: Generate native project
         run: npx expo prebuild --platform android --clean --no-install
@@ -85,7 +79,7 @@ jobs:
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           APK=android/app/build/outputs/apk/release/app-release.apk
-          if [ "$IS_TAG" = "true" ]; then OUT="dawshia-${GITHUB_REF_NAME}.apk"; else OUT="dawshia-latest.apk"; fi
+          OUT="dawshia-${LABEL}.apk"
           if [ -z "$KEYSTORE_BASE64" ]; then
             echo "::notice::ANDROID_KEYSTORE_BASE64 is not set — publishing a debug-signed APK."
             cp "$APK" "$OUT"
@@ -101,23 +95,77 @@ jobs:
             rm -f release.keystore aligned.apk
           fi
           ls -la "$OUT"
-          echo "APK=$OUT" >> "$GITHUB_ENV"
 
-      - name: Keep APK as a build artifact
-        uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@v7
         with:
-          name: ${{ env.APK }}
-          path: ${{ env.APK }}
+          name: android
+          path: dawshia-*.apk
           retention-days: 14
 
+  ios:
+    name: iOS IPA
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    runs-on: macos-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Set version
+        run: node scripts/ci/set-version.js
+
+      - name: Generate native project (and install CocoaPods)
+        run: npx expo prebuild --platform ios --clean
+
+      - name: Build IPA
+        # Unsigned without these secrets (install with Sideloadly/AltStore); signed with them.
+        env:
+          IOS_CERTIFICATE_P12_BASE64: ${{ secrets.IOS_CERTIFICATE_P12_BASE64 }}
+          IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+          IOS_EXPORT_METHOD: ${{ secrets.IOS_EXPORT_METHOD }}
+        run: scripts/ci/build-ios.sh "dawshia-${LABEL}.ipa"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ios
+          path: dawshia-*.ipa
+          retention-days: 14
+
+  publish:
+    name: Publish release
+    needs: [android, ios]
+    # Publish whatever was built: Android is required; iOS is attached when it was built.
+    if: always() && needs.android.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+
+      - run: ls -la dist
+
       - name: Move the latest-build tag to this commit
-        if: env.IS_TAG != 'true'
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         run: |
           git tag -f latest-build "$GITHUB_SHA"
           git push -f origin refs/tags/latest-build
 
       - name: Publish "Latest build" pre-release
-        if: env.IS_TAG != 'true'
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         uses: softprops/action-gh-release@v3
         with:
           tag_name: latest-build
@@ -125,15 +173,19 @@ jobs:
           prerelease: true
           make_latest: false
           overwrite_files: true
-          files: ${{ env.APK }}
+          files: dist/*
           body: |
             Automatic build of `${{ github.ref_name }}` at ${{ github.sha }} (run #${{ github.run_number }}).
-            Download **dawshia-latest.apk** below and open it on your Android phone to install or update.
+            - **Android:** download `dawshia-latest.apk` and open it on your phone.
+            - **iOS** (manual runs only): `dawshia-latest.ipa` — see the README for installing it.
 
       - name: Publish versioned release
-        if: env.IS_TAG == 'true'
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v3
         with:
-          files: ${{ env.APK }}
+          files: dist/*
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-') }}
+          body: |
+            - **Android:** `dawshia-${{ github.ref_name }}.apk` — open it on your phone to install or update.
+            - **iOS:** `dawshia-${{ github.ref_name }}.ipa` — unsigned unless iOS signing secrets are set; install with Sideloadly or AltStore (see the README).
