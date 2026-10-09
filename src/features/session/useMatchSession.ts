@@ -24,6 +24,17 @@ const HOLD_REPORT_MS = 250;
 const BIRD_REPORT_MS = 100;
 /** Online: how long to wait for the server's final result (ratings) after the match ends. */
 const SERVER_RESULT_WAIT_MS = 4000;
+/** Quick chat: minimum gap between own messages (the server enforces the same). */
+const CHAT_COOLDOWN_MS = 1500;
+
+/** Preset quick-chat phrases (translated on each phone; no free text to moderate). */
+export const CHAT_CODES = ['goodLuck', 'letsGo', 'niceOne', 'wow', 'tooEasy', 'almostThere', 'ouch', 'gg'] as const;
+export type ChatCode = (typeof CHAT_CODES)[number];
+
+export interface ChatBubble {
+  code: ChatCode;
+  atMs: number;
+}
 
 export interface LiveFeedback {
   inPosition: boolean;
@@ -84,6 +95,9 @@ export function useMatchSession({ exercise, timeControlId, mode }: Options) {
   const [result, setResult] = useState<MatchResult | null>(null);
   /** Online, ghost birds of the other players: participantId → height. */
   const [opponentBirds, setOpponentBirds] = useState<Record<string, number>>({});
+  /** Online, the latest quick-chat phrase of each participant. */
+  const [chat, setChat] = useState<Record<string, ChatBubble>>({});
+  const lastChatSentRef = useRef(0);
 
   const analyzer = useMemo(() => exercise.createAnalyzer(), [exercise]);
   const transportRef = useRef<MatchTransport | null>(null);
@@ -139,6 +153,9 @@ export function useMatchSession({ exercise, timeControlId, mode }: Options) {
       transport.subscribe((action) => dispatch(action)),
       transport.subscribeLive((event) => {
         if (event.type === 'bird') setOpponentBirds((prev) => ({ ...prev, [event.participantId]: event.y }));
+        if (event.type === 'chat' && (CHAT_CODES as readonly string[]).includes(event.code)) {
+          setChat((prev) => ({ ...prev, [event.participantId]: { code: event.code as ChatCode, atMs: Date.now() } }));
+        }
       }),
       transport.subscribeResult((r) => {
         serverResultRef.current = r;
@@ -299,5 +316,32 @@ export function useMatchSession({ exercise, timeControlId, mode }: Options) {
 
   const abort = useCallback(() => act({ type: 'abort', nowMs: Date.now() }), [act]);
 
-  return { match, error, pose, feedback, nowMs, result, onPose, abort, localParticipantId, online, opponentBirds };
+  /** Sends a quick-chat phrase to the opponent. Returns false while on cooldown. */
+  const sendChat = useCallback(
+    (code: ChatCode): boolean => {
+      const now = Date.now();
+      if (!localParticipantId || !transportRef.current || now - lastChatSentRef.current < CHAT_COOLDOWN_MS) return false;
+      lastChatSentRef.current = now;
+      transportRef.current.sendLive({ type: 'chat', participantId: localParticipantId, code });
+      setChat((prev) => ({ ...prev, [localParticipantId]: { code, atMs: now } }));
+      return true;
+    },
+    [localParticipantId],
+  );
+
+  return {
+    match,
+    error,
+    pose,
+    feedback,
+    nowMs,
+    result,
+    onPose,
+    abort,
+    localParticipantId,
+    online,
+    opponentBirds,
+    chat,
+    sendChat,
+  };
 }

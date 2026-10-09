@@ -11,6 +11,7 @@ import type {
   Profile,
   ProfileService,
   Services,
+  SocialService,
 } from '../types';
 import { FileHistoryRepository } from './fileHistory';
 
@@ -82,6 +83,17 @@ export class LocalProfileService implements ProfileService {
   }
 }
 
+/** Friends need an account and the server. */
+const offlineSocial: SocialService = {
+  available: false,
+  listFriends: async () => [],
+  addFriend: async () => {
+    throw new Error('signInRequired');
+  },
+  removeFriend: async () => {},
+  updatePublicProfile: async () => {},
+};
+
 export function createLocalServices(): Services {
   const history = new FileHistoryRepository();
   return {
@@ -89,6 +101,7 @@ export function createLocalServices(): Services {
     matchmaking: new LocalMatchmakingService(),
     history,
     profile: new LocalProfileService(history),
+    social: offlineSocial,
     openMatchTransport: () => new LocalMatchTransport(),
   };
 }

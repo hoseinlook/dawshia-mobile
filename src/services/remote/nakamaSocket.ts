@@ -29,8 +29,9 @@ export class NakamaSocket {
 
   constructor(private readonly baseUrl = SERVER_URL) {}
 
-  connect(token: string, timeoutMs = 8000): Promise<void> {
-    const url = `${this.baseUrl.replace(/^http/, 'ws')}/ws?lang=en&status=false&format=json&token=${encodeURIComponent(token)}`;
+  /** `status: true` marks the user online for friends while connected. */
+  connect(token: string, { status = false, timeoutMs = 8000 } = {}): Promise<void> {
+    const url = `${this.baseUrl.replace(/^http/, 'ws')}/ws?lang=en&status=${status}&format=json&token=${encodeURIComponent(token)}`;
     return new Promise((resolve, reject) => {
       const ws = new WebSocket(url);
       this.ws = ws;

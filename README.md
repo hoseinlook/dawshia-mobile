@@ -106,7 +106,7 @@ Nothing in `features/`, `app/` or `services/` needs to change.
 
 ## Languages
 
-Persian (`fa`, right-to-left) is the default; English (`en`) can be picked in **Settings** (the ⚙ button on the home screen). The choice is saved on the device.
+Persian (`fa`, right-to-left) is the default; English (`en`) can be picked in **Settings** (the ⚙ tab). The choice is saved on the device.
 
 - All UI text lives in `src/i18n/messages/`. `fa.ts` defines the shape, and every other language must match it, which TypeScript checks.
 - Core logic never contains display text: exercises, cues and time controls expose only ids/codes, and the UI looks up their text (`src/i18n/lookup.ts`).
@@ -124,7 +124,8 @@ Persian (`fa`, right-to-left) is the default; English (`en`) can be picked in **
   - The session is saved on the phone and refreshed automatically, so you stay signed in for 30 days of inactivity.
   - **Continue offline** skips the account. Practice still works, and stats stay on the phone.
 - **Server address:** hard-coded in `src/services/remote/config.ts` (`SERVER_URL`, currently `http://192.168.1.105:7350`). TODO: make it configurable per build and use HTTPS for release builds.
-- **Profile** (👤 on the home screen): each movement's valid reps **today**, **this month** and **in total**.
+- **Navigation:** a bottom tab bar with **Home**, **Friends**, **Profile** and **Settings**. Competitions, sessions and results open above it.
+- **Profile** (👤 tab): each movement's valid reps **today**, **this month** and **in total**.
   - Signed in, it reads from the server, and every finished practice session is sent there.
   - Offline, or when the server is unreachable, it uses the history saved on the phone and shows the technical reason.
 - **Debugging the connection:** Settings → Server → **Test connection** shows the round-trip time or the exact error. Network failures are also logged as `[dawshia] …` warnings (`adb logcat | grep dawshia`).
@@ -175,7 +176,29 @@ How a hold works:
 - Both players fly the **same course**: the server sends a shared random seed, and the course is a pure function of seed and time (`core/games/flappy.ts`).
 - The opponent's bird is shown as a red **ghost**, relayed about 10 times a second.
 
-**Results:** win, lose or draw, the opponent's score and your **rating change**. Leaving mid-match counts as a forfeit.
+**VS screen and quick chat:**
+- When the opponent is found, a fighting-game **VS** intro shows both names with rank title, level and rating (tap to skip).
+- The 💬 button opens preset phrases ("Good luck!", "Nice one!", "GG"…). They appear as bubbles under the sender's score bar on both phones, in each player's own language. There is no free text, so nothing needs moderation.
+
+**Results:** win, lose or draw, the opponent's score and your **rating change**. Leaving mid-match counts as a forfeit, so the app asks before you leave (Quit button or Android back).
+
+## Friends
+
+The **Friends** tab (signed in only):
+- **Add** a friend by username. If they already sent you a request, adding them accepts it.
+- **Requests** you received: accept or decline. Requests you sent: cancel. The tab shows a badge for new requests.
+- **Each friend:**
+  - **online / offline** status, shown as text plus a colored dot
+  - rank and level
+  - **last practice** (movement, score, how long ago)
+- The list refreshes every 30 s and on pull-down.
+
+Online status comes from a presence socket that is open while the app is in the foreground (`features/social/usePresence.ts`). Level and rank are published from Home when they change (`usePublishProfile`).
+
+End-to-end test (friends, presence, last practice, VS profile, chat):
+```sh
+npx tsx scripts/e2e/social.ts http://localhost:7350
+```
 
 **End-to-end test** against a running server (two simulated players, all three formats):
 ```sh
@@ -286,7 +309,8 @@ Without these secrets the release still works, and the APK keeps the debug signa
 | Octalysis: loss avoidance (gentle) | daily streak with a "train today to keep it" nudge and no penalty |
 | Octalysis: unpredictability | random voice cheers, surprise achievement unlocks |
 | SDT: autonomy | choose your movement and competition type |
-| SDT: relatedness | 1v1 and ranked play (server) |
+| SDT: relatedness | 1v1 and ranked play, VS intro with both profiles, quick chat, friends with online status and last practice |
+| Fogg: trigger + ability | "Play again" card on Home restarts your last competition in one tap |
 
 Tune the numbers in `src/core/progress/xp.ts` (XP and level curve) and `progress.ts` (daily goal, achievements).
 

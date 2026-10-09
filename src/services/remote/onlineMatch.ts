@@ -13,6 +13,7 @@ export const Op = {
   Ready: 6,
   Progress: 7,
   Bird: 8,
+  Chat: 9,
 } as const;
 
 interface ServerPlayer {
@@ -23,6 +24,9 @@ interface ServerPlayer {
   ready: boolean;
   value: number;
   done: boolean;
+  rating?: number;
+  level?: number;
+  rank?: string;
 }
 
 interface ServerState {
@@ -136,6 +140,7 @@ export class OnlineMatch implements MatchTransport {
         id: p.userId,
         displayName: p.username,
         isLocal: p.userId === this.selfUserId,
+        profile: { rating: p.rating, level: p.level, rank: p.rank },
       })),
       seed: state.seed,
       online: true,
@@ -172,6 +177,7 @@ export class OnlineMatch implements MatchTransport {
 
   sendLive(event: LiveEvent): void {
     if (event.type === 'bird') this.sendOp(Op.Bird, { y: Math.round(event.y * 1000) / 1000 }, false);
+    if (event.type === 'chat') this.sendOp(Op.Chat, { code: event.code });
   }
 
   subscribe(listener: (action: MatchAction) => void): () => void {
@@ -218,6 +224,11 @@ export class OnlineMatch implements MatchTransport {
         const p = payload as ServerPlayer;
         if (p.userId === this.selfUserId) break; // our own score is counted locally
         this.emitAction({ type: 'syncScore', participantId: p.userId, score: toScore(this.timeControlId, p), nowMs: now });
+        break;
+      }
+      case Op.Chat: {
+        const c = payload as { userId: string; code: string };
+        if (c.userId !== this.selfUserId) for (const l of this.liveListeners) l({ type: 'chat', participantId: c.userId, code: c.code });
         break;
       }
       case Op.Bird: {

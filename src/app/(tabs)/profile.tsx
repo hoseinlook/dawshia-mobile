@@ -1,30 +1,30 @@
-import { router, useFocusEffect } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { getExercise } from '../core/exercises/registry';
-import { isGame, isHold } from '../core/match/timeControls';
-import { ACHIEVEMENTS, computeProgress } from '../core/progress/progress';
-import type { ExerciseTotals } from '../core/stats/repTotals';
-import { AchievementBadge } from '../features/progress/AchievementBadge';
-import { PlayerCard } from '../features/progress/PlayerCard';
-import { useHistory } from '../features/progress/useHistory';
-import { format } from '../i18n/format';
-import { exerciseText, timeControlText } from '../i18n/lookup';
-import { useI18n } from '../i18n/useI18n';
-import { useServices } from '../services/ServicesProvider';
-import type { Profile } from '../services/types';
-import { AppText } from '../ui/components/AppText';
-import { Button } from '../ui/components/Button';
-import { Icon } from '../ui/components/Icon';
-import { exerciseIcon } from '../ui/exerciseIcons';
-import { useScreenOrientation } from '../ui/hooks/useScreenOrientation';
-import { colors, radius, spacing, touchTarget } from '../ui/theme';
+import { getExercise } from '../../core/exercises/registry';
+import { isGame, isHold } from '../../core/match/timeControls';
+import { ACHIEVEMENTS, computeProgress } from '../../core/progress/progress';
+import type { ExerciseTotals } from '../../core/stats/repTotals';
+import { AchievementBadge } from '../../features/progress/AchievementBadge';
+import { PlayerCard } from '../../features/progress/PlayerCard';
+import { useHistory } from '../../features/progress/useHistory';
+import { format } from '../../i18n/format';
+import { exerciseText, timeControlText } from '../../i18n/lookup';
+import { useI18n } from '../../i18n/useI18n';
+import { useServices } from '../../services/ServicesProvider';
+import type { Profile } from '../../services/types';
+import { AppText } from '../../ui/components/AppText';
+import { Button } from '../../ui/components/Button';
+import { Icon } from '../../ui/components/Icon';
+import { exerciseIcon } from '../../ui/exerciseIcons';
+import { useScreenOrientation } from '../../ui/hooks/useScreenOrientation';
+import { colors, radius, spacing } from '../../ui/theme';
 
 export default function ProfileScreen() {
   useScreenOrientation('portrait');
-  const { m, f, dir, isRTL } = useI18n();
+  const { m, f, dir } = useI18n();
   const { profile: profileService } = useServices();
   const history = useHistory();
   const progress = useMemo(() => (history ? computeProgress(history, new Date()) : null), [history]);
@@ -55,20 +55,12 @@ export default function ProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.root, dir]}>
+    <SafeAreaView style={[styles.root, dir]} edges={['top']}>
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.text} />}
       >
         <View style={styles.header}>
-          <Pressable
-            onPress={() => router.back()}
-            accessibilityRole="button"
-            accessibilityLabel={m.common.back}
-            style={({ pressed }) => [styles.back, pressed && styles.backPressed]}
-          >
-            <Icon name={isRTL ? 'arrow-right' : 'arrow-left'} />
-          </Pressable>
           <AppText variant="title" start>
             {m.profile.title}
           </AppText>
@@ -204,17 +196,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.md,
     marginTop: spacing.sm,
-  },
-  back: {
-    width: touchTarget,
-    height: touchTarget,
-    borderRadius: touchTarget / 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.surface,
-  },
-  backPressed: {
-    backgroundColor: colors.surfaceRaised,
   },
   loading: {
     marginVertical: spacing.xl,

@@ -1,7 +1,7 @@
 import { useKeepAwake } from 'expo-keep-awake';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Alert, BackHandler, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 
@@ -27,8 +27,10 @@ import { useHistory } from '../progress/useHistory';
 import { CueBanner } from './components/CueBanner';
 import { FlappyField } from './components/FlappyField';
 import { MatchClock } from './components/MatchClock';
+import { ChatBubbleView, QuickChat } from './components/QuickChat';
 import { ScoreBar } from './components/ScoreBar';
 import { SetupGuide } from './components/SetupGuide';
+import { VsIntro } from './components/VsIntro';
 import { useMatchSession } from './useMatchSession';
 
 /** How long a rep / rejected-rep flash stays on screen. */
@@ -37,6 +39,10 @@ const EVENT_FLASH_MS = 1200;
 const RECORD_FLASH_MS = 2500;
 /** Combo is shown from this many valid reps in a row. */
 const MIN_COMBO = 3;
+/** How long a quick-chat bubble stays on screen. */
+const CHAT_BUBBLE_MS = 3000;
+/** How long the online VS intro stays before the setup guide (tap to skip). */
+const VS_INTRO_MS = 4000;
 
 interface Props {
   exercise: ExerciseDefinition;
@@ -132,6 +138,42 @@ export function SessionScreen({ exercise, timeControlId, mode }: Props) {
     }
   }, [session.result]);
 
+  // Online: leaving a match in progress forfeits it, so ask first (quit button and Android back).
+  const matchStatus = session.match?.status;
+  const online = session.online;
+  const { abort } = session;
+  const confirmLeave = useMemo(() => {
+    const inProgress = online && matchStatus !== undefined && matchStatus !== 'finished';
+    const leave = () => (matchStatus === 'live' ? abort() : router.back());
+    if (!inProgress) return leave;
+    return () =>
+      Alert.alert(m.session.leaveTitle, m.session.leaveMessage, [
+        { text: m.session.stay, style: 'cancel' },
+        { text: m.session.leave, style: 'destructive', onPress: leave },
+      ]);
+  }, [online, matchStatus, abort, m]);
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      confirmLeave();
+      return true;
+    });
+    return () => sub.remove();
+  }, [confirmLeave]);
+
+  // Online: VS intro when the opponent is found.
+  const [introDismissedAt, setIntroDismissedAt] = useState<number | null>(null);
+  const [introStartedAt, setIntroStartedAt] = useState<number | null>(null);
+  const opponentId = opponent?.id;
+  useEffect(() => {
+    if (!online || !opponentId) return;
+    const start = setTimeout(() => setIntroStartedAt(Date.now()), 0);
+    const end = setTimeout(() => setIntroDismissedAt(Date.now()), VS_INTRO_MS);
+    return () => {
+      clearTimeout(start);
+      clearTimeout(end);
+    };
+  }, [online, opponentId]);
+
   if (!hasPermission) {
     return (
       <Centered>
@@ -195,6 +237,16 @@ export function SessionScreen({ exercise, timeControlId, mode }: Props) {
   const cue =
     recent?.type === 'repRejected' ? recent.reason : (feedback.cues[0] ?? null);
 
+  const you = match?.config.participants.find((p) => p.isLocal) ?? null;
+  const bubble = (id: string | undefined) => {
+    const b = id ? session.chat[id] : undefined;
+    return b && nowMs - b.atMs < CHAT_BUBBLE_MS ? b.code : null;
+  };
+  const myBubble = bubble(you?.id);
+  const opponentBubble = bubble(opponent?.id);
+  const showIntro =
+    session.online && you && opponent && introStartedAt !== null && introDismissedAt === null && status === 'setup';
+
   return (
     <View style={[styles.root, dir]}>
       <Camera
@@ -221,13 +273,16 @@ export function SessionScreen({ exercise, timeControlId, mode }: Props) {
 
       <SafeAreaView style={styles.hud} edges={['top', 'bottom', 'left', 'right']}>
         <View style={styles.topRow}>
-          <ScoreBar
-            name={m.common.you}
-            reps={score}
-            scaleMax={scaleMax}
-            color={colors.accent}
-            target={best}
-          />
+          <View style={styles.youSlot}>
+            <ScoreBar
+              name={m.common.you}
+              reps={score}
+              scaleMax={scaleMax}
+              color={colors.accent}
+              target={best}
+            />
+            {myBubble ? <ChatBubbleView code={myBubble} color={colors.accent} align="left" /> : null}
+          </View>
           <MatchClock remainingMs={match ? remainingMs(match, nowMs) : 0} />
           {/* Opponent slot: their live score bar in 1v1, mirrored on the other side. */}
           <View style={styles.opponentSlot}>
@@ -252,6 +307,7 @@ export function SessionScreen({ exercise, timeControlId, mode }: Props) {
                 </AppText>
               </View>
             ) : null}
+            {opponentBubble ? <ChatBubbleView code={opponentBubble} color={colors.opponent} align="right" /> : null}
           </View>
         </View>
 
@@ -311,23 +367,31 @@ export function SessionScreen({ exercise, timeControlId, mode }: Props) {
         </View>
 
         <View style={styles.bottomRow}>
-          <Button
-            label={m.session.quit}
-            variant="ghost"
-            onPress={() => (status === 'live' ? session.abort() : router.back())}
-          />
+          <Button label={m.session.quit} variant="ghost" onPress={confirmLeave} />
           <View style={styles.cueSlot}>
             {status === 'live' && cue ? (
               <CueBanner message={cueText(m, cue.code)} severity={cue.severity} />
             ) : null}
           </View>
-          <AppText variant="caption" color={colors.textMuted} style={styles.debug}>
-            {feedback.metrics.elbowAngle !== undefined
-              ? f(m.session.elbowAngle, { angle: feedback.metrics.elbowAngle })
-              : ''}
-          </AppText>
+          {session.online && opponent && status !== 'finished' ? (
+            <QuickChat onSend={session.sendChat} />
+          ) : (
+            <AppText variant="caption" color={colors.textMuted} style={styles.debug}>
+              {feedback.metrics.elbowAngle !== undefined
+                ? f(m.session.elbowAngle, { angle: feedback.metrics.elbowAngle })
+                : ''}
+            </AppText>
+          )}
         </View>
       </SafeAreaView>
+      {showIntro ? (
+        <VsIntro
+          you={you}
+          opponent={opponent}
+          exerciseName={exerciseText(m, exercise.id).name}
+          onDismiss={() => setIntroDismissedAt(Date.now())}
+        />
+      ) : null}
     </View>
   );
 }
@@ -356,6 +420,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: spacing.lg,
+  },
+  youSlot: {
+    flex: 1,
   },
   opponentSlot: {
     flex: 1,

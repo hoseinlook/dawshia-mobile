@@ -39,13 +39,12 @@ export interface MatchmakingService {
   findMatch(request: MatchRequest, signal?: AbortSignal): Promise<MatchConfig>;
 }
 
-/** Ephemeral live data shown to the other players (not part of the score), e.g. the Flappy bird. */
-export interface LiveEvent {
-  type: 'bird';
-  participantId: string;
-  /** Bird height 0 (top) … 1 (bottom). */
-  y: number;
-}
+/** Ephemeral live data between players (not part of the score). */
+export type LiveEvent =
+  /** Flappy bird height 0 (top) … 1 (bottom), for the opponent's ghost. */
+  | { type: 'bird'; participantId: string; y: number }
+  /** Quick-chat phrase (a code translated on each phone, see `chat` in the i18n messages). */
+  | { type: 'chat'; participantId: string; code: string };
 
 /** The server's final word on an online match. */
 export interface ServerResult {
@@ -100,10 +99,35 @@ export interface ProfileService {
   getProfile(): Promise<Profile>;
 }
 
+/** A friend or friend request, with presence and latest activity. */
+export interface FriendInfo {
+  userId: string;
+  username: string;
+  online: boolean;
+  /** friend = mutual; incoming = they asked you; outgoing = you asked them. */
+  state: 'friend' | 'incoming' | 'outgoing';
+  level?: number;
+  rank?: string;
+  lastActivity?: { exercise: string; timeControl: string; mode: string; score: number; at: number };
+}
+
+export interface SocialService {
+  /** False offline: friends need an account. */
+  readonly available: boolean;
+  listFriends(): Promise<FriendInfo[]>;
+  /** Sends a request, or accepts one if that player already asked. */
+  addFriend(username: string): Promise<void>;
+  /** Removes a friend, cancels a sent request or declines a received one. */
+  removeFriend(userId: string): Promise<void>;
+  /** Publishes level and rank so friends and opponents can see them. */
+  updatePublicProfile(profile: { level: number; rank: string }): Promise<void>;
+}
+
 export interface Services {
   auth: AuthService;
   matchmaking: MatchmakingService;
   history: MatchHistoryRepository;
   profile: ProfileService;
+  social: SocialService;
   openMatchTransport(match: MatchConfig): MatchTransport;
 }

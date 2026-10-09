@@ -165,7 +165,9 @@ async function flappyMatch() {
   await Promise.all([live(aActions), live(bActions)]);
   check(true, 'match went live on both phones');
 
-  const bird = waitFor<LiveEvent>('ghost bird', (done) => mb.match.subscribeLive(done));
+  const bird = waitFor<Extract<LiveEvent, { type: 'bird' }>>('ghost bird', (done) =>
+    mb.match.subscribeLive((e) => e.type === 'bird' && done(e)),
+  );
   ma.match.sendLive({ type: 'bird', participantId: a.userId, y: 0.37 });
   const ghost = await bird;
   check(ghost.participantId === a.userId && Math.abs(ghost.y - 0.37) < 0.01, 'opponent receives the ghost bird position');

@@ -1,25 +1,26 @@
 import { router } from 'expo-router';
 import { useMemo } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { listExercises } from '../core/exercises/registry';
-import { isGame, isHold } from '../core/match/timeControls';
-import { computeProgress, personalBest } from '../core/progress/progress';
-import { useAuth } from '../features/auth/AuthProvider';
-import { PlayerCard } from '../features/progress/PlayerCard';
-import { TodayCard } from '../features/progress/TodayCard';
-import { useHistory } from '../features/progress/useHistory';
-import { exerciseText } from '../i18n/lookup';
-import { useI18n } from '../i18n/useI18n';
-import { AppText } from '../ui/components/AppText';
-import { Icon, type IconName } from '../ui/components/Icon';
-import { OptionCard } from '../ui/components/OptionCard';
-import { exerciseIcon } from '../ui/exerciseIcons';
-import { useScreenOrientation } from '../ui/hooks/useScreenOrientation';
-import { colors, fonts, radius, spacing, touchTarget } from '../ui/theme';
+import { listExercises } from '../../core/exercises/registry';
+import { isGame, isHold } from '../../core/match/timeControls';
+import { computeProgress, personalBest } from '../../core/progress/progress';
+import { useAuth } from '../../features/auth/AuthProvider';
+import { PlayerCard } from '../../features/progress/PlayerCard';
+import { TodayCard } from '../../features/progress/TodayCard';
+import { useHistory } from '../../features/progress/useHistory';
+import { usePublishProfile } from '../../features/social/usePublishProfile';
+import { exerciseText, timeControlText } from '../../i18n/lookup';
+import { useI18n } from '../../i18n/useI18n';
+import { AppText } from '../../ui/components/AppText';
+import { Icon } from '../../ui/components/Icon';
+import { OptionCard } from '../../ui/components/OptionCard';
+import { exerciseIcon } from '../../ui/exerciseIcons';
+import { useScreenOrientation } from '../../ui/hooks/useScreenOrientation';
+import { colors, fonts, radius, spacing } from '../../ui/theme';
 
-const LOGO = require('../../assets/brand/logo.png');
+const LOGO = require('../../../assets/brand/logo.png');
 
 export default function HomeScreen() {
   useScreenOrientation('portrait');
@@ -27,9 +28,16 @@ export default function HomeScreen() {
   const { session } = useAuth();
   const history = useHistory();
   const progress = useMemo(() => (history ? computeProgress(history, new Date()) : null), [history]);
+  usePublishProfile(progress);
+  // Quick restart of the most recent competition (fewer taps for the core loop).
+  const last = useMemo(() => {
+    if (!history?.length) return null;
+    const latest = history.reduce((a, b) => (b.finishedAtMs > a.finishedAtMs ? b : a));
+    return listExercises().some((e) => e.id === latest.exerciseId) ? latest : null;
+  }, [history]);
 
   return (
-    <SafeAreaView style={[styles.root, dir]}>
+    <SafeAreaView style={[styles.root, dir]} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <View style={styles.brand}>
@@ -38,10 +46,6 @@ export default function HomeScreen() {
               DAWSHIA
             </AppText>
           </View>
-          <View style={styles.headerButtons}>
-            <HeaderButton icon="account-circle" label={m.home.profile} onPress={() => router.push('/profile')} />
-            <HeaderButton icon="cog-outline" label={m.home.settings} onPress={() => router.push('/settings')} />
-          </View>
         </View>
 
         {progress ? (
@@ -49,6 +53,26 @@ export default function HomeScreen() {
             <PlayerCard name={session?.username ?? m.common.you} progress={progress} />
             <TodayCard progress={progress} />
           </>
+        ) : null}
+
+        {last ? (
+          <OptionCard
+            icon="replay"
+            iconColor={last.mode === 'ranked' ? colors.opponent : isGame(last.timeControlId) ? colors.game : colors.accent}
+            accentColor={last.mode === 'ranked' ? colors.opponent : undefined}
+            badge={last.mode === 'ranked' ? m.home.rankedTitle : undefined}
+            title={f(m.home.playAgain, {
+              exercise: exerciseText(m, last.exerciseId).name,
+              competition: timeControlText(m, last.timeControlId).label,
+            })}
+            navigates
+            onPress={() =>
+              router.push({
+                pathname: '/session/[exerciseId]',
+                params: { exerciseId: last.exerciseId, timeControl: last.timeControlId, mode: last.mode },
+              })
+            }
+          />
         ) : null}
 
         <AppText variant="heading" start style={styles.section}>
@@ -102,20 +126,6 @@ export default function HomeScreen() {
   );
 }
 
-function HeaderButton({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      android_ripple={{ color: 'rgba(255,255,255,0.15)', borderless: true }}
-      style={({ pressed }) => [styles.iconButton, pressed && styles.iconButtonPressed]}
-    >
-      <Icon name={icon} size="md" />
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   root: {
     flex: 1,
@@ -145,21 +155,6 @@ const styles = StyleSheet.create({
     // Brand wordmark is Latin in every language.
     fontFamily: fonts.display,
     letterSpacing: 3,
-  },
-  headerButtons: {
-    flexDirection: 'row',
-    gap: spacing.xs,
-  },
-  iconButton: {
-    width: touchTarget,
-    height: touchTarget,
-    borderRadius: touchTarget / 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.surface,
-  },
-  iconButtonPressed: {
-    backgroundColor: colors.surfaceRaised,
   },
   section: {
     marginTop: spacing.sm,

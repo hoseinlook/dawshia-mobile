@@ -3,11 +3,13 @@ import type { MatchResult } from '../../core/match/types';
 import { scoreValue } from '../../core/progress/progress';
 import { localDateString, type ExerciseTotals } from '../../core/stats/repTotals';
 import type {
+  FriendInfo,
   MatchHistoryRepository,
   Profile,
   ProfileService,
   RatingSummary,
   Services,
+  SocialService,
 } from '../types';
 import type { SessionManager } from '../../features/auth/sessionManager';
 import { findOnlineMatch, type OnlineMatch } from './onlineMatch';
@@ -85,6 +87,26 @@ class SyncingHistoryRepository implements MatchHistoryRepository {
   }
 }
 
+/** Friends, presence and public profile through the server. */
+function remoteSocial(session: SessionManager): SocialService {
+  return {
+    available: true,
+    async listFriends() {
+      const { friends } = await session.rpc<{ friends: FriendInfo[] }>('get_friends');
+      return friends ?? [];
+    },
+    async addFriend(username) {
+      await session.rpc('add_friend', { username: username.trim() });
+    },
+    async removeFriend(userId) {
+      await session.rpc('remove_friend', { userId });
+    },
+    async updatePublicProfile(profile) {
+      await session.rpc('update_public_profile', profile);
+    },
+  };
+}
+
 /** Wraps the local services with the signed-in user's server-backed profile, sync and online 1v1. */
 export function withRemote(local: Services, session: SessionManager): Services {
   // Online matches found by matchmaking, handed to the session as its transport.
@@ -121,6 +143,7 @@ export function withRemote(local: Services, session: SessionManager): Services {
       }),
     },
     history: new SyncingHistoryRepository(local.history, session),
+    social: remoteSocial(session),
     profile: new RemoteProfileService(session, local.profile),
   };
 }

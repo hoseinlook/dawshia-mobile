@@ -8,6 +8,8 @@ export interface Participant {
   displayName: string;
   /** True for the athlete on this device; false for a remote opponent. */
   isLocal: boolean;
+  /** Online: public profile shown on the VS screen. */
+  profile?: { rating?: number; level?: number; rank?: string };
 }
 
 export interface ParticipantScore {

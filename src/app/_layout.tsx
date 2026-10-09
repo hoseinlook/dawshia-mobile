@@ -6,6 +6,7 @@ import { View } from 'react-native';
 
 import { AuthProvider, useAuth } from '../features/auth/AuthProvider';
 import { preloadPoseEngine } from '../features/pose/poseEngine';
+import { usePresence } from '../features/social/usePresence';
 import { SettingsProvider } from '../features/settings/SettingsProvider';
 import { ServicesProvider } from '../services/ServicesProvider';
 import { FONT_ASSETS } from '../ui/fonts';
@@ -38,6 +39,7 @@ export default function RootLayout() {
 /** Signed-out users only see the login screen; everyone else sees the app. */
 function AppStack() {
   const { status } = useAuth();
+  usePresence(); // online status for friends while signed in
   const inApp = status !== 'signedOut';
 
   return (
@@ -48,12 +50,10 @@ function AppStack() {
       }}
     >
       <Stack.Protected guard={inApp}>
-        <Stack.Screen name="index" />
+        <Stack.Screen name="(tabs)" />
         <Stack.Screen name="exercise/[exerciseId]" />
         <Stack.Screen name="session/[exerciseId]" options={{ gestureEnabled: false }} />
         <Stack.Screen name="results" />
-        <Stack.Screen name="profile" />
-        <Stack.Screen name="settings" />
       </Stack.Protected>
       <Stack.Protected guard={!inApp}>
         <Stack.Screen name="login" />

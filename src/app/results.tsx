@@ -58,7 +58,7 @@ export default function ResultsScreen() {
     return (
       <SafeAreaView style={[styles.root, styles.centered, dir]}>
         <AppText center>{m.results.notFound}</AppText>
-        <Button label={m.common.home} onPress={() => router.replace('/')} />
+        <Button label={m.common.home} onPress={() => router.dismissTo('/')} />
       </SafeAreaView>
     );
   }
@@ -236,7 +236,7 @@ export default function ResultsScreen() {
             })
           }
         />
-        <Button label={m.common.home} variant="ghost" onPress={() => router.replace('/')} />
+        <Button label={m.common.home} variant="ghost" onPress={() => router.dismissTo('/')} />
       </ScrollView>
     </SafeAreaView>
   );

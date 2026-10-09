@@ -1,18 +1,17 @@
-import { router } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useAuth } from '../features/auth/AuthProvider';
-import { useSettings } from '../features/settings/SettingsProvider';
-import { format } from '../i18n/format';
-import { LOCALES, type Locale } from '../i18n/locales';
-import { useI18n } from '../i18n/useI18n';
-import { Button } from '../ui/components/Button';
-import { OptionCard } from '../ui/components/OptionCard';
-import { useScreenOrientation } from '../ui/hooks/useScreenOrientation';
-import { AppText } from '../ui/components/AppText';
-import { colors, radius, spacing, fonts } from '../ui/theme';
+import { useAuth } from '../../features/auth/AuthProvider';
+import { useSettings } from '../../features/settings/SettingsProvider';
+import { format } from '../../i18n/format';
+import { LOCALES, type Locale } from '../../i18n/locales';
+import { useI18n } from '../../i18n/useI18n';
+import { Button } from '../../ui/components/Button';
+import { OptionCard } from '../../ui/components/OptionCard';
+import { useScreenOrientation } from '../../ui/hooks/useScreenOrientation';
+import { AppText } from '../../ui/components/AppText';
+import { colors, radius, spacing, fonts } from '../../ui/theme';
 
 export default function SettingsScreen() {
   useScreenOrientation('portrait');
@@ -20,7 +19,7 @@ export default function SettingsScreen() {
   const { settings, updateSettings } = useSettings();
 
   return (
-    <SafeAreaView style={[styles.root, dir]}>
+    <SafeAreaView style={[styles.root, dir]} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
         <AppText style={[styles.title, textStart]}>{m.settings.title}</AppText>
 
@@ -58,8 +57,6 @@ export default function SettingsScreen() {
 
         <AccountSection />
         <ServerSection />
-
-        <Button label={m.common.back} variant="ghost" onPress={() => router.back()} style={styles.back} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -166,8 +163,5 @@ const styles = StyleSheet.create({
   ltr: {
     textAlign: 'left',
     writingDirection: 'ltr',
-  },
-  back: {
-    marginTop: spacing.lg,
   },
 });
