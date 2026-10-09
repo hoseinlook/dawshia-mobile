@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#151B2B"/>
+      <stop offset="1" stop-color="#0B0F1A"/>
+    </linearGradient>
+    <radialGradient id="glowL" cx="0.25" cy="0.55" r="0.45">
+      <stop offset="0" stop-color="#3DDC97" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#3DDC97" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowR" cx="0.75" cy="0.55" r="0.45">
+      <stop offset="0" stop-color="#FF6B5B" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#FF6B5B" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="vs" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFE27A"/>
+      <stop offset="1" stop-color="#FFB020"/>
+    </linearGradient>
+
+    <!-- One arm in a biceps flex (left side of the body; mirrored for the right). -->
+    <g id="arm">
+      <!-- forearm up (drawn first so the biceps sits on top) -->
+      <path d="M -252 292 L -196 304 L -160 150 L -222 132 Z" class="skin"/>
+      <!-- upper arm out to the elbow -->
+      <path d="M -104 222 L -212 238 L -248 298 L -116 306 Z" class="skin"/>
+      <!-- big biceps peak -->
+      <ellipse cx="-176" cy="236" rx="66" ry="50" class="skin" transform="rotate(-8 -176 236)"/>
+      <path d="M -214 214 Q -180 196 -142 214" class="line thin" opacity="0.55"/>
+      <!-- fist -->
+      <path d="M -232 132 Q -238 78 -192 72 Q -146 70 -150 118 Q -152 150 -192 152 Q -228 152 -232 132 Z" class="skin"/>
+      <path d="M -222 100 L -160 96 M -224 122 L -156 118" class="line thin"/>
+      <!-- shoulder cap (deltoid) -->
+      <circle cx="-116" cy="234" r="40" class="skin"/>
+    </g>
+
+    <!-- A cartoon bodybuilder, front double-biceps pose, body center at x=0. -->
+    <g id="fighter">
+      <use href="#arm"/>
+      <use href="#arm" transform="scale(-1,1)"/>
+      <!-- legs -->
+      <path d="M -88 500 L -14 500 L -20 640 L -80 640 Z" class="skin"/>
+      <path d="M 88 500 L 14 500 L 20 640 L 80 640 Z" class="skin"/>
+      <!-- traps + torso -->
+      <path d="M -44 168 L 44 168 L 118 214 L -118 214 Z" class="skin"/>
+      <path d="M -130 212 Q 0 190 130 212 L 84 424 Q 0 446 -84 424 Z" class="skin"/>
+      <path d="M -100 248 Q -52 302 0 266 Q 52 302 100 248" class="line"/>
+      <path d="M 0 268 L 0 420" class="line thin"/>
+      <path d="M -40 322 Q -20 316 -6 322 M 6 322 Q 20 316 40 322 M -38 360 Q -20 354 -6 360 M 6 360 Q 20 354 38 360 M -34 396 Q -18 390 -6 396 M 6 396 Q 18 390 34 396" class="line thin"/>
+      <!-- shorts -->
+      <path d="M -86 420 Q 0 440 86 420 L 98 528 L 10 528 L 0 484 L -10 528 L -98 528 Z" class="team"/>
+      <!-- head -->
+      <ellipse cx="0" cy="112" rx="64" ry="72" class="skin"/>
+      <path d="M -64 86 Q 0 66 64 86 L 64 110 Q 0 92 -64 110 Z" class="team"/>
+      <path d="M 60 92 L 100 74 L 92 104 Z" class="team"/>
+      <path d="M -40 124 L -12 134 M 40 124 L 12 134" class="line"/>
+      <circle cx="-24" cy="142" r="6" fill="#0B0F1A"/>
+      <circle cx="24" cy="142" r="6" fill="#0B0F1A"/>
+      <path d="M -26 160 Q 0 182 26 160 Z" fill="#FFFFFF" stroke="#0B0F1A" stroke-width="7" stroke-linejoin="round"/>
+    </g>
+  </defs>
+
+  <style>
+    .skin { stroke: #0B0F1A; stroke-width: 9; stroke-linejoin: round; }
+    .line { fill: none; stroke: #0B0F1A; stroke-width: 7; stroke-linecap: round; }
+    .thin { stroke-width: 5; }
+    /* Custom properties inherit into the reused (use) copies; plain selectors do not. */
+    .skin { fill: var(--skin); }
+    .shade { fill: var(--shade); }
+    .team { fill: var(--team); stroke: #0B0F1A; stroke-width: 9; stroke-linejoin: round; }
+    .left { --skin: #F2B48A; --shade: #D9946A; --team: #3DDC97; }
+    .right { --skin: #B9774E; --shade: #9A5F3B; --team: #FF6B5B; }
+  </style>
+
+  <rect width="1024" height="1024" rx="0" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#glowL)"/>
+  <rect width="1024" height="1024" fill="url(#glowR)"/>
+
+  <!-- lightning bolt behind the fighters -->
+  <path d="M 566 150 L 428 548 L 520 536 L 446 900 L 640 452 L 544 466 L 642 150 Z" fill="#FFC145" stroke="#0B0F1A" stroke-width="10" stroke-linejoin="round"/>
+  <path d="M 590 196 L 478 512" stroke="#FFF3C4" stroke-width="10" stroke-linecap="round" opacity="0.8"/>
+
+  <g class="left" transform="translate(252 300) scale(0.84)"><use href="#fighter"/></g>
+  <g class="right" transform="translate(772 300) scale(-0.84 0.84)"><use href="#fighter"/></g>
+
+  <!-- VS -->
+  <text x="512" y="610" text-anchor="middle" font-family="Impact, 'Arial Black', sans-serif" font-size="210" font-style="italic" font-weight="900" fill="url(#vs)" stroke="#0B0F1A" stroke-width="14" paint-order="stroke" letter-spacing="-6">VS</text>
+</svg>

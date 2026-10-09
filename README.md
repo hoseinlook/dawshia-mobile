@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/brand/logo.png" alt="Dawshia logo" width="220"></p>
+
 # Dawshia Mobile
 
 A competitive bodyweight-training app: the phone camera watches you, counts every valid rep on the device, and turns workouts into chess-style timed matches.
@@ -183,6 +185,10 @@ Without these secrets the release still works, and the APK keeps the debug signa
 **Never commit the keystore.** `*.jks`, `*.keystore` and `*.p12` files are git-ignored.
 
 > The server address is hard-coded (`src/services/remote/config.ts`). APKs built on GitHub point at `192.168.1.105`, which only works on your home network until a public server exists.
+
+## Logo and icons
+
+The logo is hand-written vector art: `assets/brand/logo.svg`, plus `icon-foreground.svg` and `icon-background.svg` for Android's adaptive icon. To change it, edit the SVG and re-export the PNGs in `assets/` (icon, adaptive icon layers, monochrome, splash, favicon) at 1024 px. The adaptive foreground keeps its art inside the central 66% safe zone.
 
 ## License
 
