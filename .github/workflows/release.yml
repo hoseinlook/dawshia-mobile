@@ -29,18 +29,21 @@ jobs:
     env:
       IS_TAG: ${{ startsWith(github.ref, 'refs/tags/') }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 17
-          cache: gradle
+
+      # Caches Gradle downloads between runs. (setup-java's own Gradle cache can't be used:
+      # the android/ project only exists after `expo prebuild`.)
+      - uses: gradle/actions/setup-gradle@v6
 
       - run: npm ci
 
@@ -101,7 +104,7 @@ jobs:
           echo "APK=$OUT" >> "$GITHUB_ENV"
 
       - name: Keep APK as a build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ env.APK }}
           path: ${{ env.APK }}
@@ -115,12 +118,13 @@ jobs:
 
       - name: Publish "Latest build" pre-release
         if: env.IS_TAG != 'true'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: latest-build
           name: Latest build (${{ github.ref_name }})
           prerelease: true
           make_latest: false
+          overwrite_files: true
           files: ${{ env.APK }}
           body: |
             Automatic build of `${{ github.ref_name }}` at ${{ github.sha }} (run #${{ github.run_number }}).
@@ -128,7 +132,7 @@ jobs:
 
       - name: Publish versioned release
         if: env.IS_TAG == 'true'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: ${{ env.APK }}
           generate_release_notes: true
