@@ -1,7 +1,7 @@
 import type { MatchResult } from '../match/types';
-import { isHold, type TimeControlId } from '../match/timeControls';
+import { isGame, isHold, type TimeControlId } from '../match/timeControls';
 import { localDateString } from '../stats/repTotals';
-import { holdXp, levelInfo, rankForLevel, sessionXp, type LevelInfo, type RankId } from './xp';
+import { gameXp, holdXp, levelInfo, rankForLevel, sessionXp, type LevelInfo, type RankId } from './xp';
 
 /** Reps per day the athlete aims for (clear goal → flow). */
 export const DAILY_GOAL_REPS = 50;
@@ -19,7 +19,9 @@ export type AchievementId =
   | 'pullups10'
   | 'firstMuscleup'
   | 'pushups50'
-  | 'handstand30';
+  | 'handstand30'
+  | 'flappy10'
+  | 'firstWin';
 
 /** Achievements in display order, with the icon each one shows. */
 export const ACHIEVEMENTS: readonly { id: AchievementId; icon: string }[] = [
@@ -36,6 +38,8 @@ export const ACHIEVEMENTS: readonly { id: AchievementId; icon: string }[] = [
   { id: 'firstMuscleup', icon: 'lightning-bolt' },
   { id: 'pushups50', icon: 'arm-flex' },
   { id: 'handstand30', icon: 'human-handsdown' },
+  { id: 'flappy10', icon: 'bird' },
+  { id: 'firstWin', icon: 'sword-cross' },
 ];
 
 export interface Streak {
@@ -94,7 +98,9 @@ export function computeStreak(trainingDates: ReadonlySet<string>, today: string)
 export function scoreValue(result: MatchResult): number {
   const me = myScore(result);
   if (!me) return 0;
-  return isHold(result.timeControlId) ? Math.floor((me.score.holdMs ?? 0) / 1000) : me.score.reps;
+  if (isHold(result.timeControlId)) return Math.floor((me.score.holdMs ?? 0) / 1000);
+  if (isGame(result.timeControlId)) return me.score.points ?? 0;
+  return me.score.reps;
 }
 
 /** Best score (reps, or seconds for holds) in a full (not abandoned) session of this competition. */
@@ -124,12 +130,30 @@ export function computeProgress(results: readonly MatchResult[], now: Date): Pro
   let perfect = false;
   let endurance = false;
   let longestHoldMs = 0;
+  let bestGamePoints = 0;
+  let wonRanked = false;
 
   for (const r of results) {
     const me = myScore(r);
     if (!me) continue;
     const { reps, qualitySum } = me.score;
     const completed = r.finishReason === 'time';
+    // A ranked win: first place, alone, against at least one opponent (or the opponent left).
+    if (r.mode === 'ranked' && r.standings.length > 1 && r.finishReason !== 'aborted') {
+      const others = r.standings.filter((s) => !s.participant.isLocal);
+      if (me.rank === 1 && others.every((o) => o.rank > 1)) wonRanked = true;
+    }
+    if (isGame(r.timeControlId)) {
+      const points = me.score.points ?? 0;
+      totalXp += gameXp(points, completed);
+      if (completed) sessions++;
+      if (points > 0) {
+        dates.add(localDateString(new Date(r.finishedAtMs)));
+        exercisesDone.add(r.exerciseId);
+      }
+      bestGamePoints = Math.max(bestGamePoints, points);
+      continue;
+    }
     if (isHold(r.timeControlId)) {
       const holdMs = me.score.holdMs ?? 0;
       totalXp += holdXp(holdMs, completed);
@@ -172,6 +196,8 @@ export function computeProgress(results: readonly MatchResult[], now: Date): Pro
   unlock('firstMuscleup', (perExerciseBest.get('muscleup') ?? 0) >= 1);
   unlock('pushups50', (perExerciseBest.get('pushup') ?? 0) >= 50);
   unlock('handstand30', longestHoldMs >= 30_000);
+  unlock('flappy10', bestGamePoints >= 10);
+  unlock('firstWin', wonRanked);
 
   return {
     totalXp,

@@ -10,6 +10,7 @@ const ICONS: Record<string, IconName> = {
   handstandpushup: 'swap-vertical-bold',
   lsit: 'alpha-l-box',
   frontlever: 'arrow-expand-horizontal',
+  flappy: 'bird',
 };
 
 export function exerciseIcon(exerciseId: string): IconName {

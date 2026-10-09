@@ -10,6 +10,7 @@ import type {
   Services,
 } from '../types';
 import type { SessionManager } from '../../features/auth/sessionManager';
+import { findOnlineMatch, type OnlineMatch } from './onlineMatch';
 
 interface ServerProfile {
   username: string;
@@ -84,10 +85,35 @@ class SyncingHistoryRepository implements MatchHistoryRepository {
   }
 }
 
-/** Wraps the local services with the signed-in user's server-backed profile and sync. */
+/** Wraps the local services with the signed-in user's server-backed profile, sync and online 1v1. */
 export function withRemote(local: Services, session: SessionManager): Services {
+  // Online matches found by matchmaking, handed to the session as its transport.
+  const onlineMatches = new Map<string, OnlineMatch>();
   return {
     ...local,
+    matchmaking: {
+      async findMatch(request, signal) {
+        if (request.mode === 'practice') return local.matchmaking.findMatch(request, signal);
+        const { match, config } = await findOnlineMatch({
+          token: await session.getToken(),
+          selfUserId: session.getSession().userId,
+          request,
+          signal,
+        });
+        if (signal?.aborted) {
+          match.close(); // the screen was closed while the match was being set up
+          throw new Error('Matchmaking cancelled');
+        }
+        onlineMatches.set(config.id, match);
+        return config;
+      },
+    },
+    openMatchTransport(config) {
+      const online = config.online ? onlineMatches.get(config.id) : undefined;
+      if (!online) return local.openMatchTransport(config);
+      onlineMatches.delete(config.id);
+      return online;
+    },
     auth: {
       getCurrentPlayer: async () => ({
         id: session.getSession().userId,

@@ -4,7 +4,8 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { MatchResult } from '../core/match/types';
-import { isHold } from '../core/match/timeControls';
+import { primaryScore } from '../core/match/matchReducer';
+import { isGame, isHold } from '../core/match/timeControls';
 import { computeGains, scoreValue, type SessionGains } from '../core/progress/progress';
 import { playFanfare } from '../features/audio/useMatchAudio';
 import { AchievementBadge } from '../features/progress/AchievementBadge';
@@ -70,6 +71,23 @@ export default function ResultsScreen() {
   const accuracy = attempts === 0 ? 0 : Math.round((me.score.reps / attempts) * 100);
   const { after, before } = gains;
   const hold = isHold(result.timeControlId);
+  const game = isGame(result.timeControlId);
+  // 1v1 outcome.
+  const opponent = result.standings.find((s) => !s.participant.isLocal) ?? null;
+  const outcome = !opponent
+    ? null
+    : result.finishReason === 'forfeit' && me.rank === 1
+      ? 'opponentLeft'
+      : me.rank < opponent.rank
+        ? 'win'
+        : me.rank > opponent.rank
+          ? 'lose'
+          : 'draw';
+  const opponentValue = opponent
+    ? hold
+      ? Math.floor(primaryScore(result.timeControlId, opponent.score) / 1000)
+      : primaryScore(result.timeControlId, opponent.score)
+    : 0;
 
   return (
     <SafeAreaView style={[styles.root, dir]}>
@@ -79,12 +97,47 @@ export default function ResultsScreen() {
           {result.finishReason === 'aborted' ? ` · ${m.results.stoppedEarly}` : ''}
         </AppText>
 
+        {outcome ? (
+          <View
+            style={[
+              styles.outcome,
+              { borderColor: outcome === 'lose' ? colors.opponent : outcome === 'draw' ? colors.border : colors.gold },
+            ]}
+            accessibilityLiveRegion="polite"
+          >
+            <Icon
+              name={outcome === 'lose' ? 'shield-outline' : outcome === 'draw' ? 'scale-balance' : 'trophy'}
+              size="lg"
+              color={outcome === 'lose' ? colors.opponent : outcome === 'draw' ? colors.text : colors.gold}
+            />
+            <View style={styles.flex}>
+              <AppText variant="title" color={outcome === 'lose' ? colors.opponent : colors.gold} start>
+                {outcome === 'opponentLeft' ? m.online.win : m.online[outcome]}
+              </AppText>
+              <AppText variant="label" color={colors.textMuted} start>
+                {outcome === 'opponentLeft'
+                  ? m.online.opponentLeft
+                  : `${m.online.vs} ${opponent!.participant.displayName}: ${n(scoreValue(result))} — ${n(opponentValue)}`}
+              </AppText>
+            </View>
+          </View>
+        ) : null}
+        {result.rating ? (
+          <View style={styles.rating}>
+            <Icon name="chart-line" size="sm" color={colors.gold} />
+            <AppText variant="bodyBold" color={colors.gold}>
+              {m.online.rating}: {n(result.rating.before)} → {n(result.rating.after)} (
+              {n(`${result.rating.after >= result.rating.before ? '+' : ''}${result.rating.after - result.rating.before}`)})
+            </AppText>
+          </View>
+        ) : null}
+
         <View style={styles.hero}>
           <AppText style={[styles.big, gains.isPersonalBest && { color: colors.gold }]} accessibilityRole="header">
             {n(scoreValue(result))}
           </AppText>
           <AppText variant="heading" center>
-            {hold ? m.game.holdTime : m.results.validReps}
+            {game ? m.game.pipesPassed : hold ? m.game.holdTime : m.results.validReps}
           </AppText>
           {gains.isPersonalBest ? (
             <Chip icon="trophy" label={m.game.newRecord} color={colors.gold} />
@@ -92,9 +145,11 @@ export default function ResultsScreen() {
             <Chip
               icon="trophy-outline"
               label={
-                hold
-                  ? f(m.game.personalBestHold, { seconds: gains.previousBest })
-                  : f(m.game.personalBest, { reps: gains.previousBest })
+                game
+                  ? f(m.game.personalBestGame, { count: gains.previousBest })
+                  : hold
+                    ? f(m.game.personalBestHold, { seconds: gains.previousBest })
+                    : f(m.game.personalBest, { reps: gains.previousBest })
               }
               color={colors.textMuted}
               outline
@@ -162,7 +217,7 @@ export default function ResultsScreen() {
           </View>
         ) : null}
 
-        {hold ? null : (
+        {hold || game ? null : (
           <View style={styles.stats}>
             <Stat label={m.results.formScore} value={n(Math.round(me.averageQuality * 100))} />
             <Stat label={m.results.rejected} value={n(me.score.rejectedReps)} />
@@ -224,6 +279,24 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     paddingTop: spacing.xl,
     gap: spacing.md,
+  },
+  outcome: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.md,
+    borderRadius: radius.lg,
+    borderWidth: 2,
+    backgroundColor: colors.surface,
+  },
+  flex: {
+    flex: 1,
+  },
+  rating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
   },
   hero: {
     alignItems: 'center',

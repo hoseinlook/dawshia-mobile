@@ -1,5 +1,5 @@
 import type { ExerciseId } from '../exercises/types';
-import { isHold } from '../match/timeControls';
+import { isGame, isHold } from '../match/timeControls';
 import type { MatchResult } from '../match/types';
 
 /** Totals the profile shows for one movement: valid reps, or seconds held for holds. */
@@ -37,7 +37,11 @@ export function summarizeReps(
     const entry = totals.get(result.exerciseId);
     const me = result.standings.find((s) => s.participant.isLocal);
     if (!entry || !me) continue;
-    const reps = isHold(result.timeControlId) ? Math.floor((me.score.holdMs ?? 0) / 1000) : me.score.reps;
+    const reps = isHold(result.timeControlId)
+      ? Math.floor((me.score.holdMs ?? 0) / 1000)
+      : isGame(result.timeControlId)
+        ? (me.score.points ?? 0)
+        : me.score.reps;
     const date = localDateString(new Date(result.finishedAtMs));
     entry.total += reps;
     if (date.slice(0, 7) === month) entry.month += reps;

@@ -4,7 +4,7 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, V
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getExercise } from '../core/exercises/registry';
-import { isHold } from '../core/match/timeControls';
+import { isGame, isHold } from '../core/match/timeControls';
 import { ACHIEVEMENTS, computeProgress } from '../core/progress/progress';
 import type { ExerciseTotals } from '../core/stats/repTotals';
 import { AchievementBadge } from '../features/progress/AchievementBadge';
@@ -137,7 +137,11 @@ function ExerciseCard({ totals, ratings }: { totals: ExerciseTotals; ratings: Pr
   const { m, n } = useI18n();
   const exercise = getExercise(totals.exerciseId);
   // Holds are counted in seconds, everything else in valid reps.
-  const unit = exercise?.competitions.every(isHold) ? m.profile.seconds : m.profile.reps;
+  const unit = exercise?.competitions.every(isGame)
+    ? m.profile.pipes
+    : exercise?.competitions.every(isHold)
+      ? m.profile.seconds
+      : m.profile.reps;
   const competitionRatings = (exercise?.competitions ?? []).flatMap((tc) => {
     const r = ratings[`${totals.exerciseId}.${tc}`];
     return r ? [{ tc, ...r }] : [];

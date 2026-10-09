@@ -1,4 +1,5 @@
 import { dip } from './dip';
+import { flappy } from './flappy';
 import { frontlever } from './frontlever';
 import { handstand } from './handstand';
 import { handstandpushup } from './handstandpushup';
@@ -22,6 +23,7 @@ const EXERCISES: readonly ExerciseDefinition[] = [
   handstand,
   lsit,
   frontlever,
+  flappy,
 ];
 
 const byId = new Map(EXERCISES.map((e) => [e.id, e]));

@@ -4,7 +4,7 @@ import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { listExercises } from '../core/exercises/registry';
-import { isHold } from '../core/match/timeControls';
+import { isGame, isHold } from '../core/match/timeControls';
 import { computeProgress, personalBest } from '../core/progress/progress';
 import { useAuth } from '../features/auth/AuthProvider';
 import { PlayerCard } from '../features/progress/PlayerCard';
@@ -56,6 +56,7 @@ export default function HomeScreen() {
         </AppText>
         {listExercises().map((e) => {
           const text = exerciseText(m, e.id);
+          const gameMode = e.competitions.every(isGame);
           const best = history
             ? Math.max(0, ...e.competitions.map((tc) => personalBest(history, e.id, tc)))
             : 0;
@@ -63,13 +64,18 @@ export default function HomeScreen() {
             <OptionCard
               key={e.id}
               icon={exerciseIcon(e.id)}
+              iconColor={gameMode ? colors.game : colors.accent}
+              accentColor={gameMode ? colors.game : undefined}
+              badge={gameMode ? m.game.gameBadge : undefined}
               title={text.name}
               subtitle={text.description}
               meta={
                 best > 0
-                  ? e.competitions.every(isHold)
-                    ? f(m.game.personalBestHold, { seconds: best })
-                    : f(m.game.personalBest, { reps: best })
+                  ? gameMode
+                    ? f(m.game.personalBestGame, { count: best })
+                    : e.competitions.every(isHold)
+                      ? f(m.game.personalBestHold, { seconds: best })
+                      : f(m.game.personalBest, { reps: best })
                   : undefined
               }
               navigates
@@ -90,7 +96,6 @@ export default function HomeScreen() {
               {m.home.rankedText}
             </AppText>
           </View>
-          <Icon name="lock-outline" color={colors.textMuted} />
         </View>
       </ScrollView>
     </SafeAreaView>

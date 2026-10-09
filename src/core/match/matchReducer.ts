@@ -91,27 +91,79 @@ export function matchReducer(state: MatchState, action: MatchAction): MatchState
     case 'holdBroken': {
       if (!isScoring(state, action.nowMs)) return state;
       const prev = state.scores[action.participantId];
-      if (!prev || prev.holdDone) return state;
-      const scores = {
-        ...state.scores,
-        [action.participantId]: {
-          ...prev,
-          holdMs: Math.max(prev.holdMs ?? 0, action.holdMs),
-          holdDone: action.type === 'holdBroken',
+      if (!prev || prev.done) return state;
+      return finishIfAllDone(
+        state,
+        {
+          ...state.scores,
+          [action.participantId]: {
+            ...prev,
+            holdMs: Math.max(prev.holdMs ?? 0, action.holdMs),
+            done: action.type === 'holdBroken',
+          },
         },
-      };
-      // Everyone's hold has broken: the match is over.
-      const allDone = state.config.participants.every((p) => scores[p.id]?.holdDone);
-      return allDone
-        ? { ...state, scores, status: 'finished', finishedAtMs: action.nowMs, finishReason: 'time' }
-        : { ...state, scores };
+        action.nowMs,
+      );
+    }
+
+    case 'points':
+    case 'gameOver': {
+      if (!isScoring(state, action.nowMs)) return state;
+      const prev = state.scores[action.participantId];
+      if (!prev || prev.done) return state;
+      return finishIfAllDone(
+        state,
+        {
+          ...state.scores,
+          [action.participantId]: {
+            ...prev,
+            points: Math.max(prev.points ?? 0, action.points),
+            done: action.type === 'gameOver',
+          },
+        },
+        action.nowMs,
+      );
     }
 
     case 'abort': {
       if (state.status === 'finished') return state;
       return { ...state, status: 'finished', finishedAtMs: action.nowMs, finishReason: 'aborted' };
     }
+
+    case 'serverPhase': {
+      if (state.status === 'finished') return state;
+      const next: MatchState = {
+        ...state,
+        status: action.status,
+        countdownEndsAtMs: action.countdownEndsAtMs ?? state.countdownEndsAtMs,
+        startedAtMs: action.startedAtMs ?? state.startedAtMs,
+        endsAtMs: action.endsAtMs ?? state.endsAtMs,
+      };
+      return action.status === 'finished'
+        ? { ...next, finishedAtMs: action.nowMs, finishReason: action.finishReason ?? 'time' }
+        : next;
+    }
+
+    case 'syncScore': {
+      const prev = state.scores[action.participantId];
+      if (!prev || state.status === 'finished') return state;
+      return finishIfAllDone(
+        state,
+        { ...state.scores, [action.participantId]: { ...prev, ...action.score } },
+        action.nowMs,
+      );
+    }
   }
+}
+
+/** Hold/game formats end as soon as every participant is out. */
+function finishIfAllDone(state: MatchState, scores: MatchState['scores'], nowMs: number): MatchState {
+  const format = getTimeControl(state.config.timeControlId).format;
+  const allDone =
+    format !== 'timedReps' && state.config.participants.every((p) => scores[p.id]?.done);
+  return allDone
+    ? { ...state, scores, status: 'finished', finishedAtMs: nowMs, finishReason: 'time' }
+    : { ...state, scores };
 }
 
 function isScoring(state: MatchState, nowMs: number): boolean {
@@ -135,11 +187,21 @@ export function averageQuality(score: ParticipantScore): number {
   return score.reps === 0 ? 0 : score.qualitySum / score.reps;
 }
 
-/** Most valid reps wins; ties are broken by average rep quality. */
+/** The score that decides the winner, in the competition's own unit. */
+export function primaryScore(timeControlId: string, score: ParticipantScore): number {
+  switch (getTimeControl(timeControlId).format) {
+    case 'maxHold':
+      return score.holdMs ?? 0;
+    case 'game':
+      return score.points ?? 0;
+    default:
+      return score.reps;
+  }
+}
+
+/** Ranking: reps (ties broken by form quality), hold length, or game points. */
 export function computeResult(state: MatchState): MatchResult {
-  const hold = getTimeControl(state.config.timeControlId).format === 'maxHold';
-  // Hold competitions rank by hold length; rep competitions by reps, then form quality.
-  const primary = (sc: ParticipantScore) => (hold ? (sc.holdMs ?? 0) : sc.reps);
+  const primary = (sc: ParticipantScore) => primaryScore(state.config.timeControlId, sc);
   const standings: ParticipantResult[] = state.config.participants
     .map((participant) => {
       const score = state.scores[participant.id] ?? EMPTY_SCORE;

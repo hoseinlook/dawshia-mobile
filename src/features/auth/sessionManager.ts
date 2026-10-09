@@ -50,6 +50,11 @@ export class SessionManager {
     }
   }
 
+  /** A valid access token (refreshed if needed), e.g. for the real-time socket. */
+  getToken(): Promise<string> {
+    return this.validToken();
+  }
+
   private async validToken(): Promise<string> {
     if (!needsRefresh(this.session, Date.now())) return this.session.token;
     return (await this.refresh()).token;

@@ -6,7 +6,10 @@ A competitive bodyweight-training app: the phone camera watches you, counts ever
 
 **Current scope:** offline practice mode with:
 - **Most reps in a time control:** push-ups, pull-ups, deep parallel-bar dips, muscle-ups and handstand push-ups.
-- **Resistance (longest hold wins):** handstand, L-sit and front lever. The code is structured so that more exercises and online 1v1 (through `dawshia-server`) can be added without restructuring.
+- **Resistance (longest hold wins):** handstand, L-sit and front lever.
+- **Game:** **Flappy Push**. Hold a push-up plank and steer a bird through pipes with your height; most pipes passed wins.
+
+Every movement can be played as **practice** (offline) or **Ranked 1v1** (online, signed in). The code is structured so that more exercises and online 1v1 (through `dawshia-server`) can be added without restructuring.
 
 ## Run it
 
@@ -149,12 +152,35 @@ Each exercise lists its competition types (`competitions` in its definition). Ea
 |---|---|---|---|
 | `timedReps` | Bullet 1 min, Blitz 3 min, Rapid 5 min, Endurance 10 min | valid reps | the clock runs out |
 | `maxHold` | Resistance (10 min cap) | seconds held | the hold breaks (or the cap is reached) |
+| `game` | Flight (5 min cap) | points (pipes passed) | the player crashes (or the cap is reached) |
 
 How a hold works:
 - The countdown starts as soon as the athlete is visible.
 - The hold timer runs while the analyzer reports `inPosition`.
 - Detection drops shorter than 0.6 s don't break the hold.
 - A hold earns 2 XP per second, and records, profile totals and server stats are in seconds.
+
+## Online 1v1
+
+`src/services/remote/onlineMatch.ts` implements ranked matches over Nakama's real-time WebSocket protocol (JSON, no SDK). `nakamaSocket.ts` is a minimal client.
+
+**Matchmaking:** the app queues for the same exercise and competition type, the server creates the match, and both phones join.
+
+**During the match the server is authoritative:**
+- The countdown starts only when both athletes are in position (`OpReady`).
+- Phases and clocks come from the server, corrected for the difference between the phone's clock and the server's.
+- The opponent's score is synced live: reps, hold time or pipes.
+
+**Flappy Push 1v1:**
+- Both players fly the **same course**: the server sends a shared random seed, and the course is a pure function of seed and time (`core/games/flappy.ts`).
+- The opponent's bird is shown as a red **ghost**, relayed about 10 times a second.
+
+**Results:** win, lose or draw, the opponent's score and your **rating change**. Leaving mid-match counts as a forfeit.
+
+**End-to-end test** against a running server (two simulated players, all three formats):
+```sh
+npx tsx scripts/e2e/online-1v1.ts http://localhost:7350
+```
 
 ## Match sounds
 

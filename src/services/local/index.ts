@@ -43,6 +43,7 @@ class LocalMatchmakingService implements MatchmakingService {
       durationMs: timeControl.durationSec * 1000,
       countdownMs: COUNTDOWN_MS,
       participants: [{ ...request.player, isLocal: true }],
+      seed: Math.floor(Math.random() * 2 ** 31),
     };
   }
 }
@@ -50,7 +51,15 @@ class LocalMatchmakingService implements MatchmakingService {
 /** No opponents offline: publishing is a no-op and nothing is ever received. */
 class LocalMatchTransport implements MatchTransport {
   publish(): void {}
+  ready(): void {}
+  sendLive(): void {}
   subscribe(): () => void {
+    return () => {};
+  }
+  subscribeLive(): () => void {
+    return () => {};
+  }
+  subscribeResult(): () => void {
     return () => {};
   }
   close(): void {}

@@ -3,10 +3,11 @@
  *
  * - `timedReps` (chess-style time controls): most valid reps before the clock runs out.
  * - `maxHold` (resistance): hold the position as long as possible; `durationSec` is the cap.
+ * - `game` (flight): a movement-controlled mini-game; most points before crashing wins.
  */
-export type TimeControlId = 'bullet' | 'blitz' | 'rapid' | 'endurance' | 'resistance';
+export type TimeControlId = 'bullet' | 'blitz' | 'rapid' | 'endurance' | 'resistance' | 'flight';
 
-export type CompetitionFormat = 'timedReps' | 'maxHold';
+export type CompetitionFormat = 'timedReps' | 'maxHold' | 'game';
 
 export interface TimeControl {
   id: TimeControlId;
@@ -20,6 +21,7 @@ export const TIME_CONTROLS: readonly TimeControl[] = [
   { id: 'rapid', format: 'timedReps', durationSec: 300 },
   { id: 'endurance', format: 'timedReps', durationSec: 600 },
   { id: 'resistance', format: 'maxHold', durationSec: 600 },
+  { id: 'flight', format: 'game', durationSec: 300 },
 ];
 
 export const DEFAULT_TIME_CONTROL: TimeControlId = 'bullet';
@@ -30,4 +32,8 @@ export function getTimeControl(id: string | undefined): TimeControl {
 
 export function isHold(id: string | undefined): boolean {
   return getTimeControl(id).format === 'maxHold';
+}
+
+export function isGame(id: string | undefined): boolean {
+  return getTimeControl(id).format === 'game';
 }

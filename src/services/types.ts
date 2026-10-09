@@ -1,6 +1,13 @@
 import type { ExerciseId } from '../core/exercises/types';
 import type { TimeControlId } from '../core/match/timeControls';
-import type { MatchAction, MatchConfig, MatchMode, MatchResult } from '../core/match/types';
+import type {
+  FinishReason,
+  MatchAction,
+  MatchConfig,
+  MatchMode,
+  MatchResult,
+  RatingChange,
+} from '../core/match/types';
 import type { ExerciseTotals } from '../core/stats/repTotals';
 
 /**
@@ -32,13 +39,33 @@ export interface MatchmakingService {
   findMatch(request: MatchRequest, signal?: AbortSignal): Promise<MatchConfig>;
 }
 
+/** Ephemeral live data shown to the other players (not part of the score), e.g. the Flappy bird. */
+export interface LiveEvent {
+  type: 'bird';
+  participantId: string;
+  /** Bird height 0 (top) … 1 (bottom). */
+  y: number;
+}
+
+/** The server's final word on an online match. */
+export interface ServerResult {
+  reason: FinishReason;
+  /** Rating change per participant (ranked matches). */
+  ratings: Record<string, RatingChange>;
+}
+
 /**
- * Real-time channel for one match. Local actions are published; actions from
- * other participants arrive through `subscribe`.
+ * Real-time channel for one match. Local scoring actions are published;
+ * the server's authoritative state arrives through `subscribe`.
  */
 export interface MatchTransport {
   publish(action: MatchAction): void;
+  /** Online: the athlete is in the start position (the server starts the countdown when everyone is). */
+  ready(): void;
+  sendLive(event: LiveEvent): void;
   subscribe(listener: (action: MatchAction) => void): () => void;
+  subscribeLive(listener: (event: LiveEvent) => void): () => void;
+  subscribeResult(listener: (result: ServerResult) => void): () => void;
   close(): void;
 }
 

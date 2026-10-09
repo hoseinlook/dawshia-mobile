@@ -138,3 +138,36 @@ describe('hold (handstand) progress', () => {
     expect(gains.isPersonalBest).toBe(true);
   });
 });
+
+describe('game and ranked progress', () => {
+  it('earns XP per pipe and unlocks Frequent Flyer', () => {
+    const s = session('flappy', 0, day(8));
+    const game: MatchResult = {
+      ...s,
+      timeControlId: 'flight',
+      standings: [{ ...s.standings[0], score: { reps: 0, rejectedReps: 0, qualitySum: 0, points: 12, done: true } }],
+    };
+    const p = computeProgress([game], day(8, 20));
+    expect(p.totalXp).toBe(12 * 5 + 20);
+    expect(p.achievements.has('flappy10')).toBe(true);
+    expect(personalBest([game], 'flappy', 'flight')).toBe(12);
+  });
+
+  it('unlocks First Victory only for a ranked win', () => {
+    const base = session('pushup', 30, day(8));
+    const opponent = {
+      participant: { id: 'op', displayName: 'op', isLocal: false },
+      score: { reps: 20, rejectedReps: 0, qualitySum: 16 },
+      averageQuality: 0.8,
+      rank: 2,
+    };
+    const win: MatchResult = { ...base, mode: 'ranked', standings: [base.standings[0], opponent] };
+    const loss: MatchResult = {
+      ...base,
+      mode: 'ranked',
+      standings: [{ ...base.standings[0], rank: 2 }, { ...opponent, rank: 1 }],
+    };
+    expect(computeProgress([loss], day(8, 20)).achievements.has('firstWin')).toBe(false);
+    expect(computeProgress([win], day(8, 20)).achievements.has('firstWin')).toBe(true);
+  });
+});

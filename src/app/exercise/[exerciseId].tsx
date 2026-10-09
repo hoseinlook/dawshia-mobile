@@ -4,7 +4,9 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getExercise } from '../../core/exercises/registry';
-import { isHold, type TimeControlId } from '../../core/match/timeControls';
+import { isGame, isHold, type TimeControlId } from '../../core/match/timeControls';
+import type { MatchMode } from '../../core/match/types';
+import { useAuth } from '../../features/auth/AuthProvider';
 import { personalBest } from '../../core/progress/progress';
 import { useHistory } from '../../features/progress/useHistory';
 import { exerciseText, timeControlText } from '../../i18n/lookup';
@@ -23,6 +25,7 @@ export default function ExerciseScreen() {
   useScreenOrientation('portrait');
   const { m, f, dir, isRTL } = useI18n();
   const { exerciseId } = useLocalSearchParams<{ exerciseId: string }>();
+  const { status } = useAuth();
   const exercise = getExercise(exerciseId);
   const history = useHistory();
   const [competition, setCompetition] = useState<TimeControlId | undefined>(exercise?.competitions[0]);
@@ -31,11 +34,14 @@ export default function ExerciseScreen() {
   const text = exerciseText(m, exercise.id);
   const best = history ? personalBest(history, exercise.id, competition) : 0;
   const hold = isHold(competition);
+  const game = isGame(competition);
+  const tint = game ? colors.game : colors.accent;
+  const signedIn = status === 'signedIn';
 
-  const start = () =>
+  const start = (mode: MatchMode) =>
     router.push({
       pathname: '/session/[exerciseId]',
-      params: { exerciseId: exercise.id, timeControl: competition, mode: 'practice' },
+      params: { exerciseId: exercise.id, timeControl: competition, mode },
     });
 
   return (
@@ -51,8 +57,8 @@ export default function ExerciseScreen() {
         </Pressable>
 
         <View style={styles.hero}>
-          <View style={styles.heroIcon}>
-            <Icon name={exerciseIcon(exercise.id)} size="xl" color={colors.accent} />
+          <View style={[styles.heroIcon, { backgroundColor: `${tint}1F` }]}>
+            <Icon name={exerciseIcon(exercise.id)} size="xl" color={tint} />
           </View>
           <AppText variant="title" center>
             {text.name}
@@ -66,7 +72,7 @@ export default function ExerciseScreen() {
           {m.competition.title}
         </AppText>
         <AppText variant="caption" color={colors.textMuted} start>
-          {hold ? m.competition.holdRule : m.competition.timedRepsRule}
+          {game ? m.competition.gameRule : hold ? m.competition.holdRule : m.competition.timedRepsRule}
         </AppText>
         {exercise.competitions.map((id) => {
           const tc = timeControlText(m, id);
@@ -74,15 +80,17 @@ export default function ExerciseScreen() {
           return (
             <OptionCard
               key={id}
-              icon={isHold(id) ? 'timer-sand' : 'timer-outline'}
-              iconColor={colors.gold}
+              icon={isGame(id) ? 'bird' : isHold(id) ? 'timer-sand' : 'timer-outline'}
+              iconColor={isGame(id) ? colors.game : colors.gold}
               title={tc.label}
               subtitle={tc.description}
               meta={
                 pb > 0
-                  ? isHold(id)
-                    ? f(m.game.personalBestHold, { seconds: pb })
-                    : f(m.game.personalBest, { reps: pb })
+                  ? isGame(id)
+                    ? f(m.game.personalBestGame, { count: pb })
+                    : isHold(id)
+                      ? f(m.game.personalBestHold, { seconds: pb })
+                      : f(m.game.personalBest, { reps: pb })
                   : undefined
               }
               selected={id === competition}
@@ -99,14 +107,33 @@ export default function ExerciseScreen() {
           <Icon name="trophy-outline" color={colors.gold} />
           <AppText variant="bodyBold" color={colors.gold} start style={styles.goalText}>
             {best > 0
-              ? hold
-                ? f(m.game.beatYourBestHold, { seconds: best })
-                : f(m.game.beatYourBest, { reps: best })
+              ? game
+                ? f(m.game.beatYourBestGame, { count: best })
+                : hold
+                  ? f(m.game.beatYourBestHold, { seconds: best })
+                  : f(m.game.beatYourBest, { reps: best })
               : m.game.noBestYet}
           </AppText>
         </View>
 
-        <Button label={m.home.startPractice} icon="lightning-bolt" onPress={start} large />
+        <Button
+          label={m.online.practice}
+          icon={game ? 'bird' : 'lightning-bolt'}
+          variant={game ? 'game' : 'primary'}
+          onPress={() => start('practice')}
+          large
+        />
+        <Button
+          label={m.online.ranked}
+          icon="sword-cross"
+          variant="versus"
+          onPress={() => start('ranked')}
+          disabled={!signedIn}
+          large
+        />
+        <AppText variant="caption" color={colors.textMuted} center>
+          {signedIn ? m.online.rankedHint : m.online.signInForRanked}
+        </AppText>
       </ScrollView>
     </SafeAreaView>
   );

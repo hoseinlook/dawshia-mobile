@@ -4,7 +4,7 @@ import { colors, radius, spacing, touchTarget } from '../theme';
 import { AppText } from './AppText';
 import { Icon, type IconName } from './Icon';
 
-type Variant = 'primary' | 'gold' | 'secondary' | 'ghost';
+type Variant = 'primary' | 'gold' | 'game' | 'versus' | 'secondary' | 'ghost';
 
 interface Props {
   label: string;
@@ -20,6 +20,10 @@ interface Props {
 const FILL: Record<Variant, { bg: string; fg: string; border?: string }> = {
   primary: { bg: colors.accent, fg: colors.onAccent },
   gold: { bg: colors.gold, fg: colors.onGold },
+  /** Game modes (Flappy Push). */
+  game: { bg: colors.game, fg: colors.onGame },
+  /** Ranked 1v1: outlined in the opponent color, so it never reads as a destructive action. */
+  versus: { bg: colors.surfaceRaised, fg: colors.text, border: colors.opponent },
   secondary: { bg: colors.surfaceRaised, fg: colors.text, border: colors.border },
   ghost: { bg: 'transparent', fg: colors.text, border: colors.border },
 };

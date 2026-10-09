@@ -22,6 +22,13 @@ export function holdXp(holdMs: number, completed: boolean): number {
   return Math.floor(holdMs / 1000) * XP_PER_HOLD_SECOND + (completed && holdMs > 0 ? XP_COMPLETION_BONUS : 0);
 }
 
+/** XP per point in game competitions (e.g. each pipe passed in Flappy Push). */
+export const XP_PER_GAME_POINT = 5;
+
+export function gameXp(points: number, completed: boolean): number {
+  return points * XP_PER_GAME_POINT + (completed && points > 0 ? XP_COMPLETION_BONUS : 0);
+}
+
 /** Total XP needed to reach `level` (level 1 = 0 XP; each level is 100 XP longer than the last). */
 export function xpForLevel(level: number): number {
   return 50 * level * (level - 1);

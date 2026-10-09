@@ -16,8 +16,10 @@ export interface ParticipantScore {
   qualitySum: number;
   /** Hold competitions: longest continuous hold so far (optional: older saved results lack it). */
   holdMs?: number;
-  /** Hold competitions: the hold has broken, this participant is done. */
-  holdDone?: boolean;
+  /** Game competitions: points (e.g. pipes passed). */
+  points?: number;
+  /** Hold/game competitions: this participant is out (hold broke / crashed). */
+  done?: boolean;
 }
 
 export type MatchStatus = 'setup' | 'countdown' | 'live' | 'finished';
@@ -32,6 +34,10 @@ export interface MatchConfig {
   durationMs: number;
   countdownMs: number;
   participants: Participant[];
+  /** Shared random seed (game courses); the server provides it for online matches. */
+  seed?: number;
+  /** Online matches are run by the server: it decides when the countdown starts. */
+  online?: boolean;
 }
 
 export interface MatchState {
@@ -42,7 +48,16 @@ export interface MatchState {
   startedAtMs: number | null;
   endsAtMs: number | null;
   finishedAtMs: number | null;
-  finishReason: 'time' | 'aborted' | null;
+  finishReason: FinishReason | null;
+}
+
+/** time = clock ran out or everyone is out; aborted = the local player quit; forfeit = a player left an online match. */
+export type FinishReason = 'time' | 'aborted' | 'forfeit';
+
+/** Rating change reported by the server after a ranked match. */
+export interface RatingChange {
+  before: number;
+  after: number;
 }
 
 /**
@@ -58,7 +73,23 @@ export type MatchAction =
   | { type: 'hold'; participantId: ParticipantId; holdMs: number; nowMs: number }
   /** Hold competitions: the hold broke; the participant's final hold length. */
   | { type: 'holdBroken'; participantId: ParticipantId; holdMs: number; nowMs: number }
-  | { type: 'abort'; nowMs: number };
+  /** Game competitions: current points. */
+  | { type: 'points'; participantId: ParticipantId; points: number; nowMs: number }
+  /** Game competitions: crashed; final points. */
+  | { type: 'gameOver'; participantId: ParticipantId; points: number; nowMs: number }
+  | { type: 'abort'; nowMs: number }
+  /** Online: the server's phase and clock (times already converted to the local clock). */
+  | {
+      type: 'serverPhase';
+      status: MatchStatus;
+      countdownEndsAtMs: number | null;
+      startedAtMs: number | null;
+      endsAtMs: number | null;
+      finishReason?: FinishReason;
+      nowMs: number;
+    }
+  /** Online: a participant's authoritative score from the server (absolute values). */
+  | { type: 'syncScore'; participantId: ParticipantId; score: Partial<ParticipantScore>; nowMs: number };
 
 export interface ParticipantResult {
   participant: Participant;
@@ -74,6 +105,8 @@ export interface MatchResult {
   timeControlId: TimeControlId;
   durationMs: number;
   finishedAtMs: number;
-  finishReason: 'time' | 'aborted';
+  finishReason: FinishReason;
   standings: ParticipantResult[];
+  /** Ranked matches: the local player's rating change, when the server reported it. */
+  rating?: RatingChange;
 }

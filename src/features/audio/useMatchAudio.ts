@@ -1,6 +1,7 @@
 import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
 import { useEffect, useRef } from 'react';
 
+import type { FinishReason } from '../../core/match/types';
 import { MATCH_SOUNDS, musicStage, TICK_FROM_MS, type MusicStage } from './matchSounds';
 
 const MUSIC_VOLUME = 0.45;
@@ -13,7 +14,7 @@ interface Options {
   durationMs: number;
   /** Seconds left in the 3-2-1 countdown, or null. */
   countdownLeft: number | null;
-  finishReason: 'time' | 'aborted' | null;
+  finishReason: FinishReason | null;
 }
 
 type Players = Record<keyof typeof MATCH_SOUNDS, AudioPlayer>;

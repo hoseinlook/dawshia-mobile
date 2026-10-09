@@ -22,6 +22,10 @@ export const colors = {
   onGold: '#0B0F1A',
   /** Streak flame. */
   flame: '#FF8A3D',
+  /** Game modes (Flappy Push): distinct from "you" (green), "opponent/danger" (red) and rewards (gold). */
+  game: '#A78BFA',
+  gameDim: '#3B2F63',
+  onGame: '#0B0F1A',
   warning: '#FFC145',
   danger: '#FF5A5A',
 } as const;

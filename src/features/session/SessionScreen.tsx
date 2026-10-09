@@ -6,8 +6,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 
 import type { ExerciseDefinition } from '../../core/exercises/types';
-import { remainingMs } from '../../core/match/matchReducer';
-import { isHold, type TimeControlId } from '../../core/match/timeControls';
+import { primaryScore, remainingMs } from '../../core/match/matchReducer';
+import { isGame, isHold, type TimeControlId } from '../../core/match/timeControls';
 import type { MatchMode } from '../../core/match/types';
 import { personalBest } from '../../core/progress/progress';
 import { cueText, exerciseText } from '../../i18n/lookup';
@@ -25,6 +25,7 @@ import { SkeletonOverlay } from '../pose/SkeletonOverlay';
 import { usePoseDetection } from '../pose/usePoseDetection';
 import { useHistory } from '../progress/useHistory';
 import { CueBanner } from './components/CueBanner';
+import { FlappyField } from './components/FlappyField';
 import { MatchClock } from './components/MatchClock';
 import { ScoreBar } from './components/ScoreBar';
 import { SetupGuide } from './components/SetupGuide';
@@ -62,13 +63,25 @@ export function SessionScreen({ exercise, timeControlId, mode }: Props) {
     [history, exercise.id, timeControlId],
   );
 
-  // Score in the competition's unit: valid reps, or whole seconds held for holds.
+  // Score in the competition's unit: valid reps, seconds held (holds) or points (games).
   const hold = isHold(timeControlId);
+  const game = isGame(timeControlId);
   const myScore = session.localParticipantId ? session.match?.scores[session.localParticipantId] : undefined;
   const liveHoldMs = session.feedback.inPosition ? (session.feedback.metrics.holdMs ?? 0) : 0;
   const score = hold
     ? Math.floor(Math.max(liveHoldMs, myScore?.holdMs ?? 0) / 1000)
-    : (myScore?.reps ?? 0);
+    : game
+      ? Math.max(myScore?.points ?? 0, session.feedback.game?.points ?? 0)
+      : (myScore?.reps ?? 0);
+
+  // 1v1: the other participant and their score in the same unit.
+  const opponent = session.match?.config.participants.find((p) => !p.isLocal) ?? null;
+  const opponentScoreRaw = opponent ? session.match?.scores[opponent.id] : undefined;
+  const opponentScore = opponentScoreRaw
+    ? hold
+      ? Math.floor(primaryScore(timeControlId, opponentScoreRaw) / 1000)
+      : primaryScore(timeControlId, opponentScoreRaw)
+    : 0;
 
   // Reps: cheer + light haptic on every valid rep. Holds: every 10 seconds.
   // Passing the record: success haptic + "New record!" banner.
@@ -89,7 +102,7 @@ export function SessionScreen({ exercise, timeControlId, mode }: Props) {
     cheeredScoreRef.current = score;
   }, [score, cheer, best, hold]);
 
-  // Arena music and effects for timed competitions (holds stay calm).
+  // Arena music and effects for timed competitions and games (holds stay calm).
   const audioMatch = session.match;
   useMatchAudio({
     enabled: settings.musicEnabled && !hold,
@@ -134,10 +147,27 @@ export function SessionScreen({ exercise, timeControlId, mode }: Props) {
       </Centered>
     );
   }
+  // Online: matchmaking until an opponent is found.
+  if (!session.match && mode !== 'practice' && !session.error) {
+    return (
+      <Centered>
+        <Icon name="sword-cross" size="xl" color={colors.opponent} />
+        <AppText variant="heading" center>
+          {m.online.searching}
+        </AppText>
+        <AppText variant="label" color={colors.textMuted} center>
+          {exerciseText(m, exercise.id).name}
+        </AppText>
+        <Button label={m.online.cancel} variant="ghost" onPress={() => router.back()} />
+      </Centered>
+    );
+  }
   if (session.error || detection.error) {
     return (
       <Centered>
-        <AppText center>{session.error ? m.session.matchError : m.session.detectorError}</AppText>
+        <AppText center>
+          {session.error ? (session.online || mode !== 'practice' ? m.online.connectionError : m.session.matchError) : m.session.detectorError}
+        </AppText>
         <Button label={m.common.back} onPress={() => router.back()} />
       </Centered>
     );
@@ -146,9 +176,11 @@ export function SessionScreen({ exercise, timeControlId, mode }: Props) {
   const { match, feedback, nowMs } = session;
   const status = match?.status ?? 'setup';
   // Leave room past the record so the marker isn't at the very end of the bar.
+  const leader = Math.max(score, opponentScore);
   const scaleMax = hold
-    ? Math.max(30, Math.ceil(best * 1.25), Math.ceil((score + 10) / 10) * 10)
-    : Math.max(10, Math.ceil(best * 1.25), Math.ceil((score + 1) / 10) * 10);
+    ? Math.max(30, Math.ceil(best * 1.25), Math.ceil((leader + 10) / 10) * 10)
+    : Math.max(10, Math.ceil(best * 1.25), Math.ceil((leader + 1) / 10) * 10);
+  const crashed = game && status === 'live' && !!feedback.game?.crashed;
   const showRecord = recordAt !== null && nowMs - recordAt < RECORD_FLASH_MS;
 
   const countdownLeft =
@@ -172,6 +204,20 @@ export function SessionScreen({ exercise, timeControlId, mode }: Props) {
         outputs={[detection.frameOutput]}
       />
       <SkeletonOverlay pose={session.pose} color={feedback.inPosition ? colors.accent : colors.warning} />
+      {game && match ? (
+        <FlappyField
+          seed={match.config.seed ?? 0}
+          startedAtMs={match.startedAtMs}
+          live={status === 'live'}
+          birdY={feedback.metrics.birdY ?? 0.5}
+          crashed={!!feedback.game?.crashed}
+          ghosts={
+            opponent && session.opponentBirds[opponent.id] !== undefined && !opponentScoreRaw?.done
+              ? [{ id: opponent.id, y: session.opponentBirds[opponent.id], label: opponent.displayName }]
+              : []
+          }
+        />
+      ) : null}
 
       <SafeAreaView style={styles.hud} edges={['top', 'bottom', 'left', 'right']}>
         <View style={styles.topRow}>
@@ -183,11 +229,21 @@ export function SessionScreen({ exercise, timeControlId, mode }: Props) {
             target={best}
           />
           <MatchClock remainingMs={match ? remainingMs(match, nowMs) : 0} />
-          {/* Opponent slot: filled by a remote participant in 1v1 matches. */}
+          {/* Opponent slot: their live score bar in 1v1, mirrored on the other side. */}
           <View style={styles.opponentSlot}>
-            <AppText variant="label" color={colors.textMuted}>
-              {mode === 'practice' ? m.session.practice : ''}
-            </AppText>
+            {opponent ? (
+              <ScoreBar
+                name={opponent.displayName}
+                reps={opponentScore}
+                scaleMax={scaleMax}
+                color={colors.opponent}
+                align="right"
+              />
+            ) : (
+              <AppText variant="label" color={colors.textMuted}>
+                {mode === 'practice' ? m.session.practice : ''}
+              </AppText>
+            )}
             {status === 'live' && feedback.combo >= MIN_COMBO ? (
               <View style={styles.combo} accessibilityLiveRegion="polite">
                 <Icon name="fire" size="sm" color={colors.onGold} />
@@ -209,7 +265,9 @@ export function SessionScreen({ exercise, timeControlId, mode }: Props) {
               status={
                 detection.status === 'loading' || !match
                   ? m.session.preparing
-                  : feedback.inPosition
+                  : feedback.waitingForOpponent
+                    ? m.online.waitingOpponent
+                    : feedback.inPosition
                     ? m.session.holdIt
                     : feedback.cues[0]
                       ? cueText(m, feedback.cues[0].code)
@@ -220,6 +278,19 @@ export function SessionScreen({ exercise, timeControlId, mode }: Props) {
             <AppText style={styles.countdown} accessibilityLiveRegion="assertive">
               {n(countdownLeft)}
             </AppText>
+          ) : crashed ? (
+            <View style={styles.record} accessibilityLiveRegion="assertive">
+              <Icon name="bird" size="xl" color={colors.danger} />
+              <AppText variant="title" color={colors.danger}>
+                {feedback.game?.reason === 'plank' ? m.game.crashedPlank : m.game.crashedPipe}
+              </AppText>
+              <AppText variant="heading">{f(m.game.pipes, { count: score })}</AppText>
+              {opponent ? (
+                <AppText variant="label" color={colors.textMuted}>
+                  {m.online.waitingOpponent}
+                </AppText>
+              ) : null}
+            </View>
           ) : showRecord ? (
             <View style={styles.record} accessibilityLiveRegion="assertive">
               <Icon name="trophy" size="xl" color={colors.gold} />
