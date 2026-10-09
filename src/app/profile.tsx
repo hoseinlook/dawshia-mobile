@@ -1,23 +1,32 @@
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getExercise } from '../core/exercises/registry';
+import { ACHIEVEMENTS, computeProgress } from '../core/progress/progress';
 import type { ExerciseTotals } from '../core/stats/repTotals';
+import { AchievementBadge } from '../features/progress/AchievementBadge';
+import { PlayerCard } from '../features/progress/PlayerCard';
+import { useHistory } from '../features/progress/useHistory';
 import { format } from '../i18n/format';
 import { exerciseText, timeControlText } from '../i18n/lookup';
 import { useI18n } from '../i18n/useI18n';
 import { useServices } from '../services/ServicesProvider';
 import type { Profile } from '../services/types';
+import { AppText } from '../ui/components/AppText';
 import { Button } from '../ui/components/Button';
+import { Icon } from '../ui/components/Icon';
+import { exerciseIcon } from '../ui/exerciseIcons';
 import { useScreenOrientation } from '../ui/hooks/useScreenOrientation';
-import { colors, radius, spacing } from '../ui/theme';
+import { colors, radius, spacing, touchTarget } from '../ui/theme';
 
 export default function ProfileScreen() {
   useScreenOrientation('portrait');
-  const { m, dir, textStart } = useI18n();
+  const { m, f, dir, isRTL } = useI18n();
   const { profile: profileService } = useServices();
+  const history = useHistory();
+  const progress = useMemo(() => (history ? computeProgress(history, new Date()) : null), [history]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [failed, setFailed] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -50,56 +59,81 @@ export default function ProfileScreen() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.text} />}
       >
-        <Text style={[styles.title, textStart]}>{m.profile.title}</Text>
+        <View style={styles.header}>
+          <Pressable
+            onPress={() => router.back()}
+            accessibilityRole="button"
+            accessibilityLabel={m.common.back}
+            style={({ pressed }) => [styles.back, pressed && styles.backPressed]}
+          >
+            <Icon name={isRTL ? 'arrow-right' : 'arrow-left'} />
+          </Pressable>
+          <AppText variant="title" start>
+            {m.profile.title}
+          </AppText>
+        </View>
 
         {failed ? (
           <View style={styles.message}>
-            <Text style={[styles.muted, textStart]}>{m.profile.loadError}</Text>
-            <Button label={m.profile.retry} variant="ghost" onPress={load} />
+            <AppText color={colors.textMuted} start>
+              {m.profile.loadError}
+            </AppText>
+            <Button label={m.profile.retry} variant="ghost" icon="sync" onPress={load} />
           </View>
-        ) : !profile ? (
+        ) : !profile || !progress ? (
           <ActivityIndicator color={colors.text} style={styles.loading} />
         ) : (
           <>
-            <View style={styles.identity}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
-                  {(profile.displayName ?? m.common.you).slice(0, 1).toUpperCase()}
-                </Text>
-              </View>
-              <View style={styles.identityText}>
-                <Text style={[styles.name, textStart]}>{profile.displayName ?? m.common.you}</Text>
-                <Text style={[styles.source, textStart]}>
-                  {profile.source === 'server' ? m.profile.fromServer : m.profile.fromDevice}
-                </Text>
-              </View>
-            </View>
+            <PlayerCard name={profile.displayName ?? m.common.you} progress={progress} />
 
-            {profile.serverUnreachable ? (
-              <View>
-                <Text style={[styles.warning, textStart]}>{m.profile.serverUnreachable}</Text>
-                {profile.serverError ? (
-                  <Text style={[styles.source, textStart]} selectable>
-                    {format(m.auth.errorDetail, { detail: profile.serverError })}
-                  </Text>
-                ) : null}
-              </View>
+            <View style={styles.source}>
+              <Icon
+                name={profile.serverUnreachable ? 'wifi-off' : profile.source === 'server' ? 'sync' : 'cellphone'}
+                size="sm"
+                color={profile.serverUnreachable ? colors.warning : colors.textMuted}
+              />
+              <AppText variant="caption" color={profile.serverUnreachable ? colors.warning : colors.textMuted} start style={styles.flex}>
+                {profile.serverUnreachable
+                  ? m.profile.serverUnreachable
+                  : profile.source === 'server'
+                    ? m.profile.fromServer
+                    : m.profile.fromDevice}
+              </AppText>
+            </View>
+            {profile.serverError ? (
+              <AppText variant="caption" color={colors.textMuted} start selectable>
+                {/* Technical detail stays in Latin digits (IPs, ports). */}
+                {format(m.auth.errorDetail, { detail: profile.serverError })}
+              </AppText>
             ) : null}
 
             {profile.exercises.map((totals) => (
               <ExerciseCard key={totals.exerciseId} totals={totals} ratings={profile.ratings} />
             ))}
+
+            <View style={styles.sectionHeader}>
+              <AppText variant="heading" start>
+                {m.game.achievements}
+              </AppText>
+              <AppText variant="label" color={colors.gold}>
+                {f(m.game.unlockedCount, { count: progress.achievements.size, total: ACHIEVEMENTS.length })}
+              </AppText>
+            </View>
+            {/* Unlocked first, then the next goals. */}
+            {[...ACHIEVEMENTS]
+              .sort((a, b) => Number(progress.achievements.has(b.id)) - Number(progress.achievements.has(a.id)))
+              .map((a) => (
+                <AchievementBadge key={a.id} id={a.id} unlocked={progress.achievements.has(a.id)} />
+              ))}
           </>
         )}
-
-        <Button label={m.common.back} variant="ghost" onPress={() => router.back()} style={styles.back} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 function ExerciseCard({ totals, ratings }: { totals: ExerciseTotals; ratings: Profile['ratings'] }) {
-  const { m, n, textStart } = useI18n();
+  const { m, n } = useI18n();
   const exercise = getExercise(totals.exerciseId);
   const competitionRatings = (exercise?.competitions ?? []).flatMap((tc) => {
     const r = ratings[`${totals.exerciseId}.${tc}`];
@@ -108,7 +142,12 @@ function ExerciseCard({ totals, ratings }: { totals: ExerciseTotals; ratings: Pr
 
   return (
     <View style={styles.card}>
-      <Text style={[styles.cardTitle, textStart]}>{exerciseText(m, totals.exerciseId).name}</Text>
+      <View style={styles.cardTitle}>
+        <Icon name={exerciseIcon(totals.exerciseId)} color={colors.accent} />
+        <AppText variant="heading" start>
+          {exerciseText(m, totals.exerciseId).name}
+        </AppText>
+      </View>
       <View style={styles.statsRow}>
         <Stat label={m.profile.today} value={n(totals.today)} highlight />
         <Stat label={m.profile.month} value={n(totals.month)} />
@@ -116,12 +155,14 @@ function ExerciseCard({ totals, ratings }: { totals: ExerciseTotals; ratings: Pr
       </View>
       {competitionRatings.length > 0 ? (
         <View style={styles.ratings}>
-          <Text style={[styles.ratingsTitle, textStart]}>{m.profile.ratings}</Text>
+          <AppText variant="caption" color={colors.textMuted} start>
+            {m.profile.ratings}
+          </AppText>
           {competitionRatings.map((r) => (
-            <Text key={r.tc} style={[styles.rating, textStart]}>
+            <AppText key={r.tc} variant="label" start>
               {timeControlText(m, r.tc).label}: {n(r.rating)}
               {r.provisional ? '?' : ''}
-            </Text>
+            </AppText>
           ))}
         </View>
       ) : null}
@@ -132,10 +173,13 @@ function ExerciseCard({ totals, ratings }: { totals: ExerciseTotals; ratings: Pr
 function Stat({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   const { m } = useI18n();
   return (
-    <View style={styles.stat}>
-      <Text style={[styles.statValue, highlight && { color: colors.accent }]}>{value}</Text>
-      <Text style={styles.statUnit}>{m.profile.reps}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
+    <View style={styles.stat} accessible accessibilityLabel={`${label}: ${value} ${m.profile.reps}`}>
+      <AppText variant="number" color={highlight ? colors.accent : colors.text}>
+        {value}
+      </AppText>
+      <AppText variant="caption" color={colors.textMuted}>
+        {label}
+      </AppText>
     </View>
   );
 }
@@ -146,14 +190,25 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   content: {
-    padding: spacing.lg,
+    padding: spacing.md,
     gap: spacing.md,
   },
-  title: {
-    color: colors.text,
-    fontSize: 28,
-    fontWeight: '900',
-    marginTop: spacing.lg,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginTop: spacing.sm,
+  },
+  back: {
+    width: touchTarget,
+    height: touchTarget,
+    borderRadius: touchTarget / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+  },
+  backPressed: {
+    backgroundColor: colors.surfaceRaised,
   },
   loading: {
     marginVertical: spacing.xl,
@@ -161,55 +216,24 @@ const styles = StyleSheet.create({
   message: {
     gap: spacing.md,
   },
-  muted: {
-    color: colors.textMuted,
-    fontSize: 15,
-  },
-  identity: {
+  source: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    gap: spacing.xs,
   },
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.accentDim,
-  },
-  avatarText: {
-    color: colors.text,
-    fontSize: 24,
-    fontWeight: '900',
-  },
-  identityText: {
+  flex: {
     flex: 1,
-    gap: 2,
-  },
-  name: {
-    color: colors.text,
-    fontSize: 20,
-    fontWeight: '800',
-  },
-  source: {
-    color: colors.textMuted,
-    fontSize: 13,
-  },
-  warning: {
-    color: colors.warning,
-    fontSize: 13,
   },
   card: {
     padding: spacing.md,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     backgroundColor: colors.surface,
     gap: spacing.sm,
   },
   cardTitle: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: '800',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   statsRow: {
     flexDirection: 'row',
@@ -222,38 +246,16 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     backgroundColor: colors.surfaceRaised,
   },
-  statValue: {
-    color: colors.text,
-    fontSize: 26,
-    fontWeight: '900',
-    fontVariant: ['tabular-nums'],
-  },
-  statUnit: {
-    color: colors.textMuted,
-    fontSize: 11,
-  },
-  statLabel: {
-    color: colors.text,
-    fontSize: 13,
-    fontWeight: '600',
-    marginTop: 2,
-  },
   ratings: {
     gap: 2,
     paddingTop: spacing.xs,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
   },
-  ratingsTitle: {
-    color: colors.textMuted,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  rating: {
-    color: colors.text,
-    fontSize: 14,
-  },
-  back: {
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginTop: spacing.sm,
   },
 });

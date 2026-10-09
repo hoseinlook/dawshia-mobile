@@ -1,11 +1,14 @@
+import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { View } from 'react-native';
 
 import { AuthProvider, useAuth } from '../features/auth/AuthProvider';
 import { preloadPoseEngine } from '../features/pose/poseEngine';
 import { SettingsProvider } from '../features/settings/SettingsProvider';
 import { ServicesProvider } from '../services/ServicesProvider';
+import { FONT_ASSETS } from '../ui/fonts';
 import { colors } from '../ui/theme';
 
 export default function RootLayout() {
@@ -15,6 +18,10 @@ export default function RootLayout() {
       console.warn(`[dawshia] pose model preload failed: ${e instanceof Error ? e.message : e}`);
     });
   }, []);
+
+  // Fonts are bundled files: this takes a few milliseconds. Fall back to system fonts on error.
+  const [fontsLoaded, fontError] = useFonts(FONT_ASSETS);
+  if (!fontsLoaded && !fontError) return <View style={{ flex: 1, backgroundColor: colors.background }} />;
 
   return (
     <SettingsProvider>

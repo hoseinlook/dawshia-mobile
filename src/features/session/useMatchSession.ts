@@ -26,6 +26,8 @@ export interface LiveFeedback {
   /** 0..1 progress of holding the start position during setup. */
   readiness: number;
   lastEvent: ExerciseEvent | null;
+  /** Valid reps in a row since the last rejected rep (instant-feedback combo). */
+  combo: number;
 }
 
 const INITIAL_FEEDBACK: LiveFeedback = {
@@ -35,6 +37,7 @@ const INITIAL_FEEDBACK: LiveFeedback = {
   metrics: {},
   readiness: 0,
   lastEvent: null,
+  combo: 0,
 };
 
 type SessionAction = MatchAction | { type: 'init'; config: MatchConfig };
@@ -160,9 +163,12 @@ export function useMatchSession({ exercise, timeControlId, mode }: Options) {
       }
 
       let lastEvent: ExerciseEvent | null = null;
+      let comboChange: 'none' | 'reset' | number = 'none';
       if (current?.status === 'live' && localParticipantId) {
         for (const event of update.events) {
           lastEvent = event;
+          if (event.type === 'rep') comboChange = comboChange === 'none' || comboChange === 'reset' ? 1 : comboChange + 1;
+          else comboChange = 'reset';
           act(
             event.type === 'rep'
               ? { type: 'rep', participantId: localParticipantId, quality: event.quality, nowMs: now }
@@ -178,6 +184,8 @@ export function useMatchSession({ exercise, timeControlId, mode }: Options) {
         metrics: update.metrics,
         readiness,
         lastEvent: lastEvent ?? prev.lastEvent,
+        combo:
+          comboChange === 'none' ? prev.combo : comboChange === 'reset' ? 0 : prev.combo + comboChange,
       }));
     },
     [analyzer, act, localParticipantId],

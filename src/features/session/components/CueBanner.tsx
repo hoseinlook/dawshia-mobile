@@ -1,7 +1,8 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import type { FormCue } from '../../../core/exercises/types';
-import { colors, radius, spacing } from '../../../ui/theme';
+import { AppText } from '../../../ui/components/AppText';
+import { colors, radius, spacing, fonts } from '../../../ui/theme';
 
 interface Props {
   message: string;
@@ -13,7 +14,7 @@ export function CueBanner({ message, severity }: Props) {
   const tint = severity === 'warning' ? colors.warning : colors.textMuted;
   return (
     <View style={[styles.banner, { borderColor: tint }]}>
-      <Text style={[styles.text, { color: tint }]}>{message}</Text>
+      <AppText style={[styles.text, { color: tint }]}>{message}</AppText>
     </View>
   );
 }
@@ -29,7 +30,7 @@ const styles = StyleSheet.create({
   },
   text: {
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
     textAlign: 'center',
   },
 });

@@ -1,7 +1,8 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { useI18n } from '../../../i18n/useI18n';
-import { colors, radius, spacing } from '../../../ui/theme';
+import { AppText } from '../../../ui/components/AppText';
+import { colors, radius, spacing, fonts } from '../../../ui/theme';
 
 export function formatClock(ms: number): string {
   const totalSec = Math.ceil(ms / 1000);
@@ -15,7 +16,7 @@ export function MatchClock({ remainingMs }: { remainingMs: number }) {
   const low = remainingMs <= 10_000;
   return (
     <View style={[styles.box, low && styles.boxLow]}>
-      <Text style={[styles.text, low && styles.textLow]}>{n(formatClock(remainingMs))}</Text>
+      <AppText style={[styles.text, low && styles.textLow]}>{n(formatClock(remainingMs))}</AppText>
     </View>
   );
 }
@@ -35,7 +36,7 @@ const styles = StyleSheet.create({
   text: {
     color: colors.text,
     fontSize: 28,
-    fontWeight: '800',
+    fontFamily: fonts.bold,
     fontVariant: ['tabular-nums'],
   },
   textLow: {

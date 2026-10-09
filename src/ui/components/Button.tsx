@@ -1,53 +1,81 @@
-import { Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { colors, radius, spacing } from '../theme';
+import { colors, radius, spacing, touchTarget } from '../theme';
+import { AppText } from './AppText';
+import { Icon, type IconName } from './Icon';
+
+type Variant = 'primary' | 'gold' | 'secondary' | 'ghost';
 
 interface Props {
   label: string;
   onPress: () => void;
-  variant?: 'primary' | 'ghost';
+  variant?: Variant;
+  icon?: IconName;
   disabled?: boolean;
+  /** Large call-to-action size. */
+  large?: boolean;
   style?: StyleProp<ViewStyle>;
 }
 
-export function Button({ label, onPress, variant = 'primary', disabled, style }: Props) {
+const FILL: Record<Variant, { bg: string; fg: string; border?: string }> = {
+  primary: { bg: colors.accent, fg: colors.onAccent },
+  gold: { bg: colors.gold, fg: colors.onGold },
+  secondary: { bg: colors.surfaceRaised, fg: colors.text, border: colors.border },
+  ghost: { bg: 'transparent', fg: colors.text, border: colors.border },
+};
+
+/** Button with a visible pressed state (opacity + scale, no layout shift) and ≥48dp height. */
+export function Button({ label, onPress, variant = 'primary', icon, disabled, large, style }: Props) {
+  const fill = FILL[variant];
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !!disabled }}
+      android_ripple={{ color: 'rgba(255,255,255,0.15)', borderless: false }}
       style={({ pressed }) => [
         styles.base,
-        variant === 'primary' ? styles.primary : styles.ghost,
-        (pressed || disabled) && { opacity: disabled ? 0.4 : 0.8 },
+        large && styles.large,
+        { backgroundColor: fill.bg, borderColor: fill.border ?? fill.bg },
+        pressed && styles.pressed,
+        disabled && styles.disabled,
         style,
       ]}
     >
-      <Text style={[styles.text, variant === 'primary' && styles.textPrimary]}>{label}</Text>
+      <View style={styles.content}>
+        {icon ? <Icon name={icon} size={large ? 'md' : 'sm'} color={fill.fg} /> : null}
+        <AppText variant={large ? 'heading' : 'bodyBold'} color={fill.fg}>
+          {label}
+        </AppText>
+      </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   base: {
-    alignItems: 'center',
+    minHeight: touchTarget,
+    justifyContent: 'center',
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm + 4,
     borderRadius: radius.lg,
-  },
-  primary: {
-    backgroundColor: colors.accent,
-  },
-  ghost: {
-    backgroundColor: 'rgba(11,15,26,0.7)',
     borderWidth: 1,
-    borderColor: colors.border,
+    overflow: 'hidden',
   },
-  text: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '700',
+  large: {
+    minHeight: 60,
   },
-  textPrimary: {
-    color: colors.background,
+  content: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+  },
+  pressed: {
+    opacity: 0.85,
+    transform: [{ scale: 0.98 }],
+  },
+  disabled: {
+    opacity: 0.4,
   },
 });

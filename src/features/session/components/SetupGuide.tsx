@@ -1,7 +1,8 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { useI18n } from '../../../i18n/useI18n';
-import { colors, radius, spacing } from '../../../ui/theme';
+import { AppText } from '../../../ui/components/AppText';
+import { colors, radius, spacing, fonts } from '../../../ui/theme';
 
 interface Props {
   title: string;
@@ -16,15 +17,15 @@ export function SetupGuide({ title, instructions, inPosition, readiness, status 
   const { n, textStart } = useI18n();
   return (
     <View style={styles.card}>
-      <Text style={[styles.title, textStart]}>{title}</Text>
+      <AppText style={[styles.title, textStart]}>{title}</AppText>
       {instructions.map((line, i) => (
-        <Text key={line} style={[styles.step, textStart]}>
+        <AppText key={line} style={[styles.step, textStart]}>
           {n(i + 1)}. {line}
-        </Text>
+        </AppText>
       ))}
       <View style={styles.statusRow}>
         <View style={[styles.dot, { backgroundColor: inPosition ? colors.accent : colors.warning }]} />
-        <Text style={[styles.status, textStart]}>{status}</Text>
+        <AppText style={[styles.status, textStart]}>{status}</AppText>
       </View>
       <View style={styles.track}>
         <View style={[styles.fill, { width: `${readiness * 100}%` }]} />
@@ -44,7 +45,7 @@ const styles = StyleSheet.create({
   title: {
     color: colors.text,
     fontSize: 18,
-    fontWeight: '800',
+    fontFamily: fonts.bold,
     marginBottom: spacing.xs,
   },
   step: {
@@ -67,7 +68,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     color: colors.text,
     fontSize: 15,
-    fontWeight: '600',
+    fontFamily: fonts.bold,
   },
   track: {
     height: 6,

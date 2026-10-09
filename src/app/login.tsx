@@ -5,7 +5,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from 'react-native';
@@ -22,7 +21,8 @@ import { format } from '../i18n/format';
 import { useI18n } from '../i18n/useI18n';
 import { Button } from '../ui/components/Button';
 import { useScreenOrientation } from '../ui/hooks/useScreenOrientation';
-import { colors, radius, spacing } from '../ui/theme';
+import { AppText } from '../ui/components/AppText';
+import { colors, radius, spacing, fonts } from '../ui/theme';
 
 type Mode = 'signIn' | 'signUp';
 
@@ -70,8 +70,8 @@ export default function LoginScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <Text style={styles.logo}>DAWSHIA</Text>
-          <Text style={[styles.tagline, textStart]}>{m.home.tagline}</Text>
+          <AppText style={styles.logo}>DAWSHIA</AppText>
+          <AppText style={[styles.tagline, textStart]}>{m.home.tagline}</AppText>
 
           <View style={styles.tabs}>
             {(['signIn', 'signUp'] as const).map((tab) => (
@@ -82,9 +82,9 @@ export default function LoginScreen() {
                 accessibilityState={{ selected: mode === tab }}
                 style={[styles.tab, mode === tab && styles.tabActive]}
               >
-                <Text style={[styles.tabText, mode === tab && styles.tabTextActive]}>
+                <AppText style={[styles.tabText, mode === tab && styles.tabTextActive]}>
                   {tab === 'signIn' ? m.auth.signInTab : m.auth.signUpTab}
-                </Text>
+                </AppText>
               </Pressable>
             ))}
           </View>
@@ -118,12 +118,12 @@ export default function LoginScreen() {
 
           {error ? (
             <View style={styles.error}>
-              <Text style={[styles.errorText, textStart]}>{m.auth.errors[error.code]}</Text>
+              <AppText style={[styles.errorText, textStart]}>{m.auth.errors[error.code]}</AppText>
               {error.detail ? (
-                <Text style={[styles.errorDetail, textStart]} selectable>
+                <AppText style={[styles.errorDetail, textStart]} selectable>
                   {/* Technical detail stays in Latin digits (IPs, ports). */}
                   {format(m.auth.errorDetail, { detail: error.detail })}
-                </Text>
+                </AppText>
               ) : null}
             </View>
           ) : null}
@@ -136,8 +136,8 @@ export default function LoginScreen() {
           />
 
           <Pressable onPress={continueOffline} style={styles.offline} accessibilityRole="button">
-            <Text style={styles.offlineText}>{m.auth.continueOffline}</Text>
-            <Text style={styles.offlineHint}>{m.auth.offlineHint}</Text>
+            <AppText style={styles.offlineText}>{m.auth.continueOffline}</AppText>
+            <AppText style={styles.offlineHint}>{m.auth.offlineHint}</AppText>
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -152,7 +152,7 @@ function Field({
   const { textStart } = useI18n();
   return (
     <View style={styles.field}>
-      <Text style={[styles.label, textStart]}>{label}</Text>
+      <AppText style={[styles.label, textStart]}>{label}</AppText>
       <TextInput
         {...input}
         autoCapitalize="none"
@@ -181,7 +181,7 @@ const styles = StyleSheet.create({
   logo: {
     color: colors.accent,
     fontSize: 40,
-    fontWeight: '900',
+    fontFamily: fonts.bold,
     letterSpacing: 6,
     textAlign: 'center',
   },
@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
   tabText: {
     color: colors.textMuted,
     fontSize: 15,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
   },
   tabTextActive: {
     color: colors.text,
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
   label: {
     color: colors.text,
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: fonts.bold,
   },
   input: {
     color: colors.text,
@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
   errorText: {
     color: colors.danger,
     fontSize: 14,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
   },
   errorDetail: {
     color: colors.textMuted,
@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
   offlineText: {
     color: colors.text,
     fontSize: 15,
-    fontWeight: '600',
+    fontFamily: fonts.bold,
     textDecorationLine: 'underline',
   },
   offlineHint: {

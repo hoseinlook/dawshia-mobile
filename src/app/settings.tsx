@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../features/auth/AuthProvider';
@@ -11,7 +11,8 @@ import { useI18n } from '../i18n/useI18n';
 import { Button } from '../ui/components/Button';
 import { OptionCard } from '../ui/components/OptionCard';
 import { useScreenOrientation } from '../ui/hooks/useScreenOrientation';
-import { colors, radius, spacing } from '../ui/theme';
+import { AppText } from '../ui/components/AppText';
+import { colors, radius, spacing, fonts } from '../ui/theme';
 
 export default function SettingsScreen() {
   useScreenOrientation('portrait');
@@ -21,9 +22,9 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={[styles.root, dir]}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={[styles.title, textStart]}>{m.settings.title}</Text>
+        <AppText style={[styles.title, textStart]}>{m.settings.title}</AppText>
 
-        <Text style={[styles.section, textStart]}>{m.settings.language}</Text>
+        <AppText style={[styles.section, textStart]}>{m.settings.language}</AppText>
         {(Object.keys(LOCALES) as Locale[]).map((id) => (
           <OptionCard
             key={id}
@@ -33,9 +34,9 @@ export default function SettingsScreen() {
           />
         ))}
 
-        <Text style={[styles.section, textStart]}>{m.settings.sound}</Text>
+        <AppText style={[styles.section, textStart]}>{m.settings.sound}</AppText>
         <View style={styles.row}>
-          <Text style={[styles.hint, textStart]}>{m.settings.soundHint}</Text>
+          <AppText style={[styles.hint, textStart]}>{m.settings.soundHint}</AppText>
           <Switch
             value={settings.soundEnabled}
             onValueChange={(soundEnabled) => updateSettings({ soundEnabled })}
@@ -58,13 +59,13 @@ function AccountSection() {
   const { status, session, signOut } = useAuth();
   return (
     <>
-      <Text style={[styles.section, textStart]}>{m.settings.account}</Text>
+      <AppText style={[styles.section, textStart]}>{m.settings.account}</AppText>
       <View style={styles.row}>
-        <Text style={[styles.hint, textStart]}>
+        <AppText style={[styles.hint, textStart]}>
           {status === 'signedIn' && session
             ? f(m.settings.signedInAs, { username: session.username })
             : m.settings.offlineMode}
-        </Text>
+        </AppText>
         <Button
           label={status === 'signedIn' ? m.settings.signOut : m.settings.signIn}
           variant="ghost"
@@ -96,11 +97,11 @@ function ServerSection() {
 
   return (
     <>
-      <Text style={[styles.section, textStart]}>{m.settings.server}</Text>
+      <AppText style={[styles.section, textStart]}>{m.settings.server}</AppText>
       <View style={styles.row}>
-        <Text style={[styles.hint, styles.ltr]} selectable>
+        <AppText style={[styles.hint, styles.ltr]} selectable>
           {api.url}
-        </Text>
+        </AppText>
         <Button
           label={testing ? m.settings.testing : m.settings.testConnection}
           variant="ghost"
@@ -109,9 +110,9 @@ function ServerSection() {
         />
       </View>
       {result ? (
-        <Text style={[styles.hint, textStart]} selectable>
+        <AppText style={[styles.hint, textStart]} selectable>
           {result}
-        </Text>
+        </AppText>
       ) : null}
     </>
   );
@@ -129,13 +130,13 @@ const styles = StyleSheet.create({
   title: {
     color: colors.text,
     fontSize: 28,
-    fontWeight: '900',
+    fontFamily: fonts.bold,
     marginTop: spacing.lg,
   },
   section: {
     color: colors.text,
     fontSize: 15,
-    fontWeight: '800',
+    fontFamily: fonts.bold,
     marginTop: spacing.md,
   },
   row: {

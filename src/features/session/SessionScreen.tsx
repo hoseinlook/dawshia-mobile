@@ -1,7 +1,7 @@
 import { useKeepAwake } from 'expo-keep-awake';
 import { router } from 'expo-router';
-import { useEffect, useRef } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 
@@ -9,14 +9,19 @@ import type { ExerciseDefinition } from '../../core/exercises/types';
 import { remainingMs } from '../../core/match/matchReducer';
 import type { TimeControlId } from '../../core/match/timeControls';
 import type { MatchMode } from '../../core/match/types';
+import { personalBest } from '../../core/progress/progress';
 import { cueText, exerciseText } from '../../i18n/lookup';
 import { useI18n } from '../../i18n/useI18n';
+import { AppText } from '../../ui/components/AppText';
 import { Button } from '../../ui/components/Button';
+import { Icon } from '../../ui/components/Icon';
+import { haptics } from '../../ui/haptics';
 import { useScreenOrientation } from '../../ui/hooks/useScreenOrientation';
-import { colors, spacing } from '../../ui/theme';
+import { colors, fonts, radius, spacing } from '../../ui/theme';
 import { useCheers } from '../audio/useCheers';
 import { SkeletonOverlay } from '../pose/SkeletonOverlay';
 import { usePoseDetection } from '../pose/usePoseDetection';
+import { useHistory } from '../progress/useHistory';
 import { CueBanner } from './components/CueBanner';
 import { MatchClock } from './components/MatchClock';
 import { ScoreBar } from './components/ScoreBar';
@@ -25,6 +30,10 @@ import { useMatchSession } from './useMatchSession';
 
 /** How long a rep / rejected-rep flash stays on screen. */
 const EVENT_FLASH_MS = 1200;
+/** How long the "New record!" moment stays on screen. */
+const RECORD_FLASH_MS = 2500;
+/** Combo is shown from this many valid reps in a row. */
+const MIN_COMBO = 3;
 
 interface Props {
   exercise: ExerciseDefinition;
@@ -43,15 +52,37 @@ export function SessionScreen({ exercise, timeControlId, mode }: Props) {
   const detection = usePoseDetection(session.onPose);
   const cheer = useCheers();
 
-  // Cheer on every new valid rep.
+  // Personal best for this competition: the target to race against.
+  const history = useHistory();
+  const best = useMemo(
+    () => (history ? personalBest(history, exercise.id, timeControlId) : 0),
+    [history, exercise.id, timeControlId],
+  );
+
+  // Every valid rep: voice cheer + light haptic. Passing the record: success haptic + banner.
   const localReps = session.localParticipantId
     ? (session.match?.scores[session.localParticipantId]?.reps ?? 0)
     : 0;
   const cheeredRepsRef = useRef(0);
+  const [recordAt, setRecordAt] = useState<number | null>(null);
   useEffect(() => {
-    if (localReps > cheeredRepsRef.current) cheer();
+    if (localReps > cheeredRepsRef.current) {
+      cheer();
+      if (best > 0 && cheeredRepsRef.current <= best && localReps > best) {
+        haptics.success();
+        setRecordAt(Date.now());
+      } else {
+        haptics.rep();
+      }
+    }
     cheeredRepsRef.current = localReps;
-  }, [localReps, cheer]);
+  }, [localReps, cheer, best]);
+
+  // Rejected rep: short warning haptic.
+  const lastEvent = session.feedback.lastEvent;
+  useEffect(() => {
+    if (lastEvent?.type === 'repRejected') haptics.rejected();
+  }, [lastEvent]);
 
   useEffect(() => {
     if (!hasPermission) requestPermission();
@@ -66,7 +97,7 @@ export function SessionScreen({ exercise, timeControlId, mode }: Props) {
   if (!hasPermission) {
     return (
       <Centered>
-        <Text style={styles.message}>{m.session.cameraPermission}</Text>
+        <AppText center>{m.session.cameraPermission}</AppText>
         <Button label={m.session.allowCamera} onPress={requestPermission} />
       </Centered>
     );
@@ -74,16 +105,14 @@ export function SessionScreen({ exercise, timeControlId, mode }: Props) {
   if (!device) {
     return (
       <Centered>
-        <Text style={styles.message}>{m.session.noCamera}</Text>
+        <AppText center>{m.session.noCamera}</AppText>
       </Centered>
     );
   }
   if (session.error || detection.error) {
     return (
       <Centered>
-        <Text style={styles.message}>
-          {session.error ? m.session.matchError : m.session.detectorError}
-        </Text>
+        <AppText center>{session.error ? m.session.matchError : m.session.detectorError}</AppText>
         <Button label={m.common.back} onPress={() => router.back()} />
       </Centered>
     );
@@ -92,7 +121,9 @@ export function SessionScreen({ exercise, timeControlId, mode }: Props) {
   const { match, feedback, nowMs } = session;
   const status = match?.status ?? 'setup';
   const reps = localReps;
-  const scaleMax = Math.max(10, Math.ceil((reps + 1) / 10) * 10);
+  // Leave room past the record so the marker isn't at the very end of the bar.
+  const scaleMax = Math.max(10, Math.ceil(best * 1.25), Math.ceil((reps + 1) / 10) * 10);
+  const showRecord = recordAt !== null && nowMs - recordAt < RECORD_FLASH_MS;
 
   const countdownLeft =
     status === 'countdown' && match?.countdownEndsAtMs
@@ -123,11 +154,22 @@ export function SessionScreen({ exercise, timeControlId, mode }: Props) {
             reps={reps}
             scaleMax={scaleMax}
             color={colors.accent}
+            target={best}
           />
           <MatchClock remainingMs={match ? remainingMs(match, nowMs) : 0} />
           {/* Opponent slot: filled by a remote participant in 1v1 matches. */}
           <View style={styles.opponentSlot}>
-            <Text style={styles.practiceLabel}>{mode === 'practice' ? m.session.practice : ''}</Text>
+            <AppText variant="label" color={colors.textMuted}>
+              {mode === 'practice' ? m.session.practice : ''}
+            </AppText>
+            {status === 'live' && feedback.combo >= MIN_COMBO ? (
+              <View style={styles.combo} accessibilityLiveRegion="polite">
+                <Icon name="fire" size="sm" color={colors.onGold} />
+                <AppText variant="bodyBold" color={colors.onGold}>
+                  {f(m.game.combo, { count: feedback.combo })}
+                </AppText>
+              </View>
+            ) : null}
           </View>
         </View>
 
@@ -149,9 +191,18 @@ export function SessionScreen({ exercise, timeControlId, mode }: Props) {
               }
             />
           ) : countdownLeft !== null ? (
-            <Text style={styles.countdown}>{n(countdownLeft)}</Text>
+            <AppText style={styles.countdown} accessibilityLiveRegion="assertive">
+              {n(countdownLeft)}
+            </AppText>
+          ) : showRecord ? (
+            <View style={styles.record} accessibilityLiveRegion="assertive">
+              <Icon name="trophy" size="xl" color={colors.gold} />
+              <AppText variant="title" color={colors.gold}>
+                {m.game.newRecord}
+              </AppText>
+            </View>
           ) : recent?.type === 'rep' ? (
-            <Text style={styles.repFlash}>{n('+1')}</Text>
+            <AppText style={styles.repFlash}>{n('+1')}</AppText>
           ) : null}
         </View>
 
@@ -166,11 +217,11 @@ export function SessionScreen({ exercise, timeControlId, mode }: Props) {
               <CueBanner message={cueText(m, cue.code)} severity={cue.severity} />
             ) : null}
           </View>
-          <Text style={styles.debug}>
+          <AppText variant="caption" color={colors.textMuted} style={styles.debug}>
             {feedback.metrics.elbowAngle !== undefined
               ? f(m.session.elbowAngle, { angle: feedback.metrics.elbowAngle })
               : ''}
-          </Text>
+          </AppText>
         </View>
       </SafeAreaView>
     </View>
@@ -192,11 +243,6 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     padding: spacing.lg,
   },
-  message: {
-    color: colors.text,
-    fontSize: 16,
-    textAlign: 'center',
-  },
   hud: {
     ...StyleSheet.absoluteFill,
     padding: spacing.md,
@@ -211,10 +257,15 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'flex-end',
   },
-  practiceLabel: {
-    color: colors.textMuted,
-    fontSize: 13,
-    fontWeight: '800',
+  combo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
+    backgroundColor: colors.gold,
   },
   center: {
     flex: 1,
@@ -223,13 +274,25 @@ const styles = StyleSheet.create({
   },
   countdown: {
     color: colors.text,
-    fontSize: 120,
-    fontWeight: '900',
+    fontFamily: fonts.display,
+    fontSize: 140,
+    lineHeight: 150,
   },
   repFlash: {
     color: colors.accent,
-    fontSize: 72,
-    fontWeight: '900',
+    fontFamily: fonts.display,
+    fontSize: 88,
+    lineHeight: 96,
+  },
+  record: {
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+    backgroundColor: 'rgba(11,15,26,0.85)',
+    borderWidth: 2,
+    borderColor: colors.gold,
   },
   bottomRow: {
     flexDirection: 'row',
@@ -240,8 +303,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   debug: {
-    color: colors.textMuted,
-    fontSize: 12,
     minWidth: 80,
     textAlign: 'right',
   },

@@ -1,68 +1,106 @@
 import { router } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useMemo } from 'react';
+import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { listExercises } from '../core/exercises/registry';
+import { computeProgress, personalBest } from '../core/progress/progress';
+import { useAuth } from '../features/auth/AuthProvider';
+import { PlayerCard } from '../features/progress/PlayerCard';
+import { TodayCard } from '../features/progress/TodayCard';
+import { useHistory } from '../features/progress/useHistory';
 import { exerciseText } from '../i18n/lookup';
 import { useI18n } from '../i18n/useI18n';
+import { AppText } from '../ui/components/AppText';
+import { Icon, type IconName } from '../ui/components/Icon';
 import { OptionCard } from '../ui/components/OptionCard';
+import { exerciseIcon } from '../ui/exerciseIcons';
 import { useScreenOrientation } from '../ui/hooks/useScreenOrientation';
-import { colors, radius, spacing } from '../ui/theme';
+import { colors, fonts, radius, spacing, touchTarget } from '../ui/theme';
+
+const LOGO = require('../../assets/brand/logo.png');
 
 export default function HomeScreen() {
   useScreenOrientation('portrait');
-  const { m, dir, textStart } = useI18n();
+  const { m, f, dir } = useI18n();
+  const { session } = useAuth();
+  const history = useHistory();
+  const progress = useMemo(() => (history ? computeProgress(history, new Date()) : null), [history]);
 
   return (
     <SafeAreaView style={[styles.root, dir]}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.logo}>DAWSHIA</Text>
+          <View style={styles.brand}>
+            <Image source={LOGO} style={styles.logo} accessibilityIgnoresInvertColors />
+            <AppText variant="title" color={colors.accent} style={styles.wordmark}>
+              DAWSHIA
+            </AppText>
+          </View>
           <View style={styles.headerButtons}>
-            <Pressable
-              onPress={() => router.push('/profile')}
-              accessibilityRole="button"
-              accessibilityLabel={m.home.profile}
-              hitSlop={8}
-              style={styles.settingsButton}
-            >
-              <Text style={styles.settingsIcon}>👤</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => router.push('/settings')}
-              accessibilityRole="button"
-              accessibilityLabel={m.home.settings}
-              hitSlop={8}
-              style={styles.settingsButton}
-            >
-              <Text style={styles.settingsIcon}>⚙</Text>
-            </Pressable>
+            <HeaderButton icon="account-circle" label={m.home.profile} onPress={() => router.push('/profile')} />
+            <HeaderButton icon="cog-outline" label={m.home.settings} onPress={() => router.push('/settings')} />
           </View>
         </View>
-        <Text style={[styles.tagline, textStart]}>{m.home.tagline}</Text>
 
-        <Text style={[styles.section, textStart]}>{m.home.chooseMovement}</Text>
+        {progress ? (
+          <>
+            <PlayerCard name={session?.username ?? m.common.you} progress={progress} />
+            <TodayCard progress={progress} />
+          </>
+        ) : null}
+
+        <AppText variant="heading" start style={styles.section}>
+          {m.home.chooseMovement}
+        </AppText>
         {listExercises().map((e) => {
           const text = exerciseText(m, e.id);
+          const best = history
+            ? Math.max(0, ...e.competitions.map((tc) => personalBest(history, e.id, tc)))
+            : 0;
           return (
             <OptionCard
               key={e.id}
-              selected={false}
+              icon={exerciseIcon(e.id)}
               title={text.name}
               subtitle={text.description}
-              onPress={() =>
-                router.push({ pathname: '/exercise/[exerciseId]', params: { exerciseId: e.id } })
-              }
+              meta={best > 0 ? f(m.game.personalBest, { reps: best }) : undefined}
+              navigates
+              onPress={() => router.push({ pathname: '/exercise/[exerciseId]', params: { exerciseId: e.id } })}
             />
           );
         })}
 
         <View style={styles.comingSoon}>
-          <Text style={[styles.comingSoonTitle, textStart]}>{m.home.rankedTitle}</Text>
-          <Text style={[styles.comingSoonText, textStart]}>{m.home.rankedText}</Text>
+          <View style={styles.vsIcon}>
+            <Icon name="sword-cross" size="lg" color={colors.opponent} />
+          </View>
+          <View style={styles.comingSoonText}>
+            <AppText variant="bodyBold" start>
+              {m.home.rankedTitle}
+            </AppText>
+            <AppText variant="caption" color={colors.textMuted} start>
+              {m.home.rankedText}
+            </AppText>
+          </View>
+          <Icon name="lock-outline" color={colors.textMuted} />
         </View>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function HeaderButton({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      android_ripple={{ color: 'rgba(255,255,255,0.15)', borderless: true }}
+      style={({ pressed }) => [styles.iconButton, pressed && styles.iconButtonPressed]}
+    >
+      <Icon name={icon} size="md" />
+    </Pressable>
   );
 }
 
@@ -72,64 +110,68 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   content: {
-    padding: spacing.lg,
-    gap: spacing.sm,
+    padding: spacing.md,
+    paddingTop: spacing.lg,
+    gap: spacing.md,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: spacing.lg,
+  },
+  brand: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   logo: {
-    color: colors.accent,
-    fontSize: 40,
-    fontWeight: '900',
-    letterSpacing: 6,
+    width: 44,
+    height: 44,
+    borderRadius: radius.sm,
+  },
+  wordmark: {
+    // Brand wordmark is Latin in every language.
+    fontFamily: fonts.display,
+    letterSpacing: 3,
   },
   headerButtons: {
     flexDirection: 'row',
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
-  settingsButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  iconButton: {
+    width: touchTarget,
+    height: touchTarget,
+    borderRadius: touchTarget / 2,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.surface,
   },
-  settingsIcon: {
-    color: colors.text,
-    fontSize: 22,
-  },
-  tagline: {
-    color: colors.textMuted,
-    fontSize: 16,
-    marginBottom: spacing.md,
+  iconButtonPressed: {
+    backgroundColor: colors.surfaceRaised,
   },
   section: {
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: '800',
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
   },
   comingSoon: {
-    marginTop: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
     padding: spacing.md,
     borderRadius: radius.md,
     borderWidth: 1,
     borderStyle: 'dashed',
     borderColor: colors.border,
-    gap: spacing.xs,
   },
-  comingSoonTitle: {
-    color: colors.textMuted,
-    fontSize: 16,
-    fontWeight: '700',
+  vsIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FF6B5B1F',
   },
   comingSoonText: {
-    color: colors.textMuted,
-    fontSize: 13,
+    flex: 1,
+    gap: 2,
   },
 });

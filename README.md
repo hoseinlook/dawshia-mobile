@@ -186,6 +186,33 @@ Without these secrets the release still works, and the APK keeps the debug signa
 
 > The server address is hard-coded (`src/services/remote/config.ts`). APKs built on GitHub point at `192.168.1.105`, which only works on your home network until a public server exists.
 
+## Design and gamification
+
+**Design system** (`src/ui/`), following the [ui-ux-pro-max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) guidelines (style: *Vibrant & Block-based*):
+- **Colors:** semantic tokens in `theme.ts` taken from the logo: green = you, red = opponent, gold = rewards. Text contrast is at least 4.5:1.
+- **Type:** Barlow Condensed for display numbers and Latin headings; Vazirmatn for Persian and body text (`AppText`).
+- **Icons:** one vector family, `MaterialCommunityIcons` via `Icon`. No emoji are used as icons.
+- **Touch and motion:**
+  - Touch targets are at least 48 dp, and every pressable shows a pressed state without shifting the layout.
+  - Animation timing comes from shared `motion` tokens.
+  - Animations are skipped when the system asks for reduced motion.
+  - Haptics are used only for meaningful moments (`haptics.ts`).
+
+**Gamification** (`src/core/progress/`), all computed from the session history saved on the phone:
+
+| Theory | Feature |
+|---|---|
+| Self-Determination Theory: competence | XP per valid rep (better form gives more XP), levels with rank titles (Rookie → Legend), progress bars |
+| Flow: clear goals | daily rep goal; your personal best shown as a marker on the score bar during a session |
+| Flow: immediate feedback | combo counter, haptics on reps and rejected reps, a "New record!" moment, a results screen with XP and level animation |
+| Octalysis: ownership | 12 achievements; locked ones stay visible with their goal |
+| Octalysis: loss avoidance (gentle) | daily streak with a "train today to keep it" nudge and no penalty |
+| Octalysis: unpredictability | random voice cheers, surprise achievement unlocks |
+| SDT: autonomy | choose your movement and competition type |
+| SDT: relatedness | 1v1 and ranked play (server) |
+
+Tune the numbers in `src/core/progress/xp.ts` (XP and level curve) and `progress.ts` (daily goal, achievements).
+
 ## Logo and icons
 
 The logo is hand-written vector art: `assets/brand/logo.svg`, plus `icon-foreground.svg` and `icon-background.svg` for Android's adaptive icon. To change it, edit the SVG and re-export the PNGs in `assets/` (icon, adaptive icon layers, monochrome, splash, favicon) at 1024 px. The adaptive foreground keeps its art inside the central 66% safe zone.
