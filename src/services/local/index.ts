@@ -104,6 +104,10 @@ const offlineSocial: SocialService = {
     throw new Error('signInRequired');
   },
   declineChallenge: async () => {},
+  listChatPartners: async () => [],
+  openChat: async () => {
+    throw new Error('signInRequired');
+  },
 };
 
 export function createLocalServices(): Services {

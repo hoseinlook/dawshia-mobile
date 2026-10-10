@@ -92,6 +92,19 @@ export default function PlayerScreen() {
                 </AppText>
               </View>
               <FriendAction player={player} />
+              {player.canChat ? (
+                <Button
+                  label={m.messages.message}
+                  icon="message-text-outline"
+                  variant="secondary"
+                  onPress={() =>
+                    router.push({
+                      pathname: '/chat/[userId]',
+                      params: { userId: player.userId, username: player.username },
+                    })
+                  }
+                />
+              ) : null}
             </View>
 
             <Compare player={player} avatar={avatar} />

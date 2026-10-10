@@ -5,6 +5,7 @@ import { localDateString, type ExerciseTotals } from '../../core/stats/repTotals
 import type {
   Avatar,
   ChallengeMatch,
+  ChatPartner,
   FriendInfo,
   MatchHistoryRepository,
   PlayerDetails,
@@ -16,6 +17,7 @@ import type {
   SocialService,
 } from '../types';
 import type { SessionManager } from '../../features/auth/sessionManager';
+import { openDirectChat } from './chat';
 import { findOnlineMatch, joinChallengeMatch, type OnlineMatch } from './onlineMatch';
 
 interface ServerProfile {
@@ -137,6 +139,13 @@ function remoteSocial(session: SessionManager): SocialService {
     },
     async declineChallenge(invite) {
       await session.rpc('decline_challenge', { matchId: invite.matchId, userId: invite.userId });
+    },
+    async listChatPartners() {
+      const { partners } = await session.rpc<{ partners: ChatPartner[] }>('get_chat_partners');
+      return partners ?? [];
+    },
+    async openChat(userId) {
+      return openDirectChat({ token: await session.getToken(), userId });
     },
   };
 }

@@ -4,6 +4,8 @@ import type { ChallengeInvite } from '../types';
 export const Notify = {
   Challenge: 100,
   ChallengeDeclined: 101,
+  /** A chat message from a past opponent: {userId, username, text}. Matches dawshia-server/internal/chat. */
+  ChatMessage: 102,
 } as const;
 
 export interface ServerNotification {

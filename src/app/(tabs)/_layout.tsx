@@ -1,6 +1,8 @@
 import { Tabs } from 'expo-router';
 import { View } from 'react-native';
 
+import { useChat } from '../../features/chat/ChatProvider';
+import { IncomingMessage } from '../../features/chat/IncomingMessage';
 import { useFriends } from '../../features/social/FriendsProvider';
 import { IncomingChallenge } from '../../features/social/IncomingChallenge';
 import { useI18n } from '../../i18n/useI18n';
@@ -15,6 +17,8 @@ import { colors, fonts } from '../../ui/theme';
 export default function TabsLayout() {
   const { m, n } = useI18n();
   const { incomingCount } = useFriends();
+  const { totalUnread } = useChat();
+  const friendsBadge = incomingCount + totalUnread;
   const icon = (name: IconName) =>
     function TabIcon({ color }: { color: unknown }) {
       return <Icon name={name} color={String(color)} />;
@@ -40,12 +44,13 @@ export default function TabsLayout() {
           options={{
             title: m.tabs.friends,
             tabBarIcon: icon('account-group'),
-            tabBarBadge: incomingCount > 0 ? n(incomingCount) : undefined,
+            tabBarBadge: friendsBadge > 0 ? n(friendsBadge) : undefined,
           }}
         />
         <Tabs.Screen name="profile" options={{ title: m.tabs.profile, tabBarIcon: icon('account-circle') }} />
         <Tabs.Screen name="settings" options={{ title: m.tabs.settings, tabBarIcon: icon('cog') }} />
       </Tabs>
+      <IncomingMessage />
       <IncomingChallenge />
     </View>
   );

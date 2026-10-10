@@ -6,8 +6,10 @@ import { View } from 'react-native';
 
 import { AuthProvider, useAuth } from '../features/auth/AuthProvider';
 import { preloadPoseEngine } from '../features/pose/poseEngine';
+import { ChatProvider } from '../features/chat/ChatProvider';
 import { ChallengesProvider } from '../features/social/ChallengesProvider';
 import { FriendsProvider } from '../features/social/FriendsProvider';
+import { NotificationsProvider } from '../features/social/NotificationsProvider';
 import { useRestoreAvatar } from '../features/avatar/useRestoreAvatar';
 import { SettingsProvider } from '../features/settings/SettingsProvider';
 import { ServicesProvider } from '../services/ServicesProvider';
@@ -47,26 +49,31 @@ function AppStack() {
   const inApp = status !== 'signedOut';
 
   return (
-    // Online status for friends while signed in, and friend challenges.
-    <ChallengesProvider>
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: colors.background },
-        }}
-      >
-        <Stack.Protected guard={inApp}>
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="exercise/[exerciseId]" />
-          <Stack.Screen name="session/[exerciseId]" options={{ gestureEnabled: false }} />
-          <Stack.Screen name="results" />
-          <Stack.Screen name="player/[userId]" />
-          <Stack.Screen name="challenge/[userId]" />
-        </Stack.Protected>
-        <Stack.Protected guard={!inApp}>
-          <Stack.Screen name="login" />
-        </Stack.Protected>
-      </Stack>
-    </ChallengesProvider>
+    // Online status for friends while signed in, fight requests and chat.
+    <NotificationsProvider>
+      <ChallengesProvider>
+        <ChatProvider>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: colors.background },
+            }}
+          >
+            <Stack.Protected guard={inApp}>
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="exercise/[exerciseId]" />
+              <Stack.Screen name="session/[exerciseId]" options={{ gestureEnabled: false }} />
+              <Stack.Screen name="results" />
+              <Stack.Screen name="player/[userId]" />
+              <Stack.Screen name="challenge/[userId]" />
+              <Stack.Screen name="chat/[userId]" />
+            </Stack.Protected>
+            <Stack.Protected guard={!inApp}>
+              <Stack.Screen name="login" />
+            </Stack.Protected>
+          </Stack>
+        </ChatProvider>
+      </ChallengesProvider>
+    </NotificationsProvider>
   );
 }

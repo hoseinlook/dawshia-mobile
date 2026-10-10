@@ -27,6 +27,17 @@ export interface SessionTokens {
   refreshToken: string;
 }
 
+/** A chat message as Nakama returns it (REST and socket). */
+export interface ServerChannelMessage {
+  channel_id: string;
+  message_id: string;
+  sender_id: string;
+  username: string;
+  /** JSON object as a string, e.g. {"text":"gg"}. */
+  content: string;
+  create_time: string;
+}
+
 interface AuthResponse {
   token?: string;
   refresh_token?: string;
@@ -84,6 +95,21 @@ export class NakamaApi {
     );
     const raw = (body as { payload?: string }).payload;
     return (raw ? JSON.parse(raw) : {}) as T;
+  }
+
+  /** Messages of a chat channel the user belongs to; `forward: false` = newest first. */
+  async listChannelMessages(
+    token: string,
+    channelId: string,
+    { limit = 50, cursor }: { limit?: number; cursor?: string } = {},
+  ): Promise<{ messages?: ServerChannelMessage[]; next_cursor?: string }> {
+    const query = new URLSearchParams({ limit: String(limit), forward: 'false' });
+    if (cursor) query.set('cursor', cursor);
+    return (await this.send(
+      'GET',
+      `/v2/channel/${encodeURIComponent(channelId)}?${query}`,
+      `Bearer ${token}`,
+    )) as { messages?: ServerChannelMessage[]; next_cursor?: string };
   }
 
   /** Pings the server. Returns the round-trip time in ms; throws if unreachable. */

@@ -29,7 +29,7 @@ export default function ResultsScreen() {
   useScreenOrientation('portrait');
   const { m, f, n, dir } = useI18n();
   const { matchId } = useLocalSearchParams<{ matchId: string }>();
-  const { history } = useServices();
+  const { history, social } = useServices();
   const { settings } = useSettings();
   const [data, setData] = useState<{ result: MatchResult; all: MatchResult[] } | null | undefined>(undefined);
 
@@ -127,7 +127,10 @@ export default function ResultsScreen() {
             <Icon name="chart-line" size="sm" color={colors.gold} />
             <AppText variant="bodyBold" color={colors.gold}>
               {m.online.rating}: {n(result.rating.before)} → {n(result.rating.after)} (
-              {n(`${result.rating.after >= result.rating.before ? '+' : ''}${result.rating.after - result.rating.before}`)})
+              {n(
+                `${result.rating.after >= result.rating.before ? '+' : ''}${result.rating.after - result.rating.before}`,
+              )}
+              )
             </AppText>
           </View>
         ) : null}
@@ -182,7 +185,11 @@ export default function ResultsScreen() {
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <View style={styles.inline}>
-              <Icon name="target" size="sm" color={gains.goalReached || after.todayReps >= after.dailyGoal ? colors.accent : colors.text} />
+              <Icon
+                name="target"
+                size="sm"
+                color={gains.goalReached || after.todayReps >= after.dailyGoal ? colors.accent : colors.text}
+              />
               <AppText variant="bodyBold">
                 {after.todayReps >= after.dailyGoal ? m.game.dailyGoalDone : m.game.dailyGoal}
               </AppText>
@@ -236,6 +243,20 @@ export default function ResultsScreen() {
             })
           }
         />
+        {/* After a 1v1: talk to your opponent (Nakama direct messages). */}
+        {result.mode !== 'practice' && opponent && social.available ? (
+          <Button
+            label={f(m.messages.messageUser, { username: opponent.participant.displayName })}
+            icon="message-text-outline"
+            variant="secondary"
+            onPress={() =>
+              router.push({
+                pathname: '/chat/[userId]',
+                params: { userId: opponent.participant.id, username: opponent.participant.displayName },
+              })
+            }
+          />
+        ) : null}
         <Button label={m.common.home} variant="ghost" onPress={() => router.dismissTo('/')} />
       </ScrollView>
     </SafeAreaView>

@@ -1,11 +1,11 @@
 import { router } from 'expo-router';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
-import { parseNotifications, toChallengeInvite } from '../../services/remote/notifications';
+import { toChallengeInvite, type ServerNotification } from '../../services/remote/notifications';
 import { useServices } from '../../services/ServicesProvider';
 import type { ChallengeInvite } from '../../services/types';
 import { haptics } from '../../ui/haptics';
-import { usePresence } from './usePresence';
+import { useNotifications } from './NotificationsProvider';
 
 interface ChallengesContextValue {
   /** The newest challenge still open, if any. */
@@ -39,25 +39,23 @@ export function challengeRoute(
 }
 
 /**
- * Friend challenges: keeps the presence socket open (online status) and
- * collects incoming challenges from it; sends challenges to friends.
+ * Friend challenges: collects incoming challenges from the presence socket's
+ * notifications and sends challenges to friends.
  */
 export function ChallengesProvider({ children }: { children: ReactNode }) {
   const { social } = useServices();
   const [invites, setInvites] = useState<ChallengeInvite[]>([]);
   const [now, setNow] = useState(() => Date.now());
 
-  const onNotifications = useCallback((payload: unknown) => {
-    const fresh = parseNotifications(payload)
-      .map(toChallengeInvite)
-      .filter((x): x is ChallengeInvite => x !== null);
-    if (fresh.length === 0) return;
+  const onNotification = useCallback((n: ServerNotification) => {
+    const invite = toChallengeInvite(n);
+    if (!invite) return;
     haptics.success();
     setNow(Date.now());
     // One open challenge per friend: a new one replaces the old.
-    setInvites((prev) => [...prev.filter((p) => !fresh.some((x) => x.userId === p.userId)), ...fresh]);
+    setInvites((prev) => [...prev.filter((p) => p.userId !== invite.userId), invite]);
   }, []);
-  usePresence(onNotifications);
+  useNotifications(onNotification);
 
   // Drop expired challenges.
   useEffect(() => {

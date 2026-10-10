@@ -244,6 +244,31 @@ End-to-end test (who can be challenged, decline, accept, cancel):
 npx tsx scripts/e2e/challenge.ts http://localhost:7350
 ```
 
+### Messages after a 1v1
+
+After a 1v1, ranked or friendly, the two players can message each other:
+- **Where to start a chat:**
+  - **Results:** a **Message {opponent}** button
+  - **Player page:** a **Message** button when you have played them
+  - **Friends tab:** a **Messages** section lists your past opponents, newest first, with unread counts
+- **The chat screen:**
+  - live messages and a history of earlier ones
+  - quick replies: "Good game!", "Rematch?" and two more
+  - text up to 500 characters; Persian, English and emoji all work
+- **New messages:**
+  - a preview card appears above the tab bar for 5 s; tap it to open the chat
+  - the Friends tab badge counts unread messages along with friend requests
+
+How it works:
+- It uses Nakama **direct-message channels** (`services/remote/chat.ts`). Each open chat has its own socket, and history comes from `GET /v2/channel/{id}`.
+- The server only lets two players open a channel if they have finished a 1v1 together. It checks every message and sends the other player a notification (code 102) on their presence socket (`features/chat/ChatProvider.tsx`).
+- Unread counts live in memory. They count messages that arrive while the app is open and reset when you open that chat.
+
+End-to-end test (chat after a 1v1, strangers blocked, live delivery, notification, limits, history):
+```sh
+npx tsx scripts/e2e/chat.ts http://localhost:7350
+```
+
 **End-to-end test** against a running server (two simulated players, all three formats):
 ```sh
 npx tsx scripts/e2e/online-1v1.ts http://localhost:7350
@@ -353,7 +378,7 @@ Without these secrets the release still works, and the APK keeps the debug signa
 | Octalysis: loss avoidance (gentle) | daily streak with a "train today to keep it" nudge and no penalty |
 | Octalysis: unpredictability | random voice cheers, surprise achievement unlocks |
 | SDT: autonomy | choose your movement and competition type |
-| SDT: relatedness | 1v1 and ranked play, VS intro with both profiles, quick chat, friends with online status and last practice, fight requests to online friends |
+| SDT: relatedness | 1v1 and ranked play, VS intro with both profiles, quick chat, friends with online status and last practice, fight requests to online friends, chat with past opponents |
 | Fogg: trigger + ability | "Play again" card on Home restarts your last competition in one tap |
 
 Tune the numbers in `src/core/progress/xp.ts` (XP and level curve) and `progress.ts` (daily goal, achievements).

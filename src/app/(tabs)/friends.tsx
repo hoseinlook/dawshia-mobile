@@ -14,12 +14,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../../features/auth/AuthProvider';
 import { SignInRequired } from '../../features/auth/SignInRequired';
+import { useChat } from '../../features/chat/ChatProvider';
 import { useFriends } from '../../features/social/FriendsProvider';
 import { formatScore, timeAgo } from '../../i18n/activity';
 import { exerciseText } from '../../i18n/lookup';
 import { useI18n } from '../../i18n/useI18n';
 import { useServices } from '../../services/ServicesProvider';
-import type { FriendInfo } from '../../services/types';
+import type { ChatPartner, FriendInfo } from '../../services/types';
 import { useAvatar } from '../../features/avatar/avatars';
 import { AppText } from '../../ui/components/AppText';
 import { Avatar } from '../../ui/components/Avatar';
@@ -36,18 +37,21 @@ export default function FriendsScreen() {
   useScreenOrientation('portrait');
   const { m, dir } = useI18n();
   const { available, friends, error, refresh } = useFriends();
+  const chat = useChat();
+  const refreshChats = chat.refresh;
   const [refreshing, setRefreshing] = useState(false);
 
   // Fresh statuses whenever the tab is opened.
   useFocusEffect(
     useCallback(() => {
       refresh();
-    }, [refresh]),
+      refreshChats();
+    }, [refresh, refreshChats]),
   );
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await refresh();
+    await Promise.all([refresh(), refreshChats()]);
     setRefreshing(false);
   };
 
@@ -107,6 +111,17 @@ export default function FriendsScreen() {
             ))}
             {outgoing.map((x) => (
               <FriendRow key={x.userId} friend={x} />
+            ))}
+          </Section>
+        ) : null}
+
+        {chat.partners && chat.partners.length > 0 ? (
+          <Section title={m.messages.title} count={chat.totalUnread}>
+            <AppText variant="caption" color={colors.textMuted} start>
+              {m.messages.hint}
+            </AppText>
+            {chat.partners.map((p) => (
+              <ChatRow key={p.userId} partner={p} unread={chat.unread[p.userId] ?? 0} />
             ))}
           </Section>
         ) : null}
@@ -332,6 +347,49 @@ function FriendRow({ friend }: { friend: FriendInfo }) {
   );
 }
 
+/** A past 1v1 opponent: opens the chat. */
+function ChatRow({ partner, unread }: { partner: ChatPartner; unread: number }) {
+  const { m, f, n } = useI18n();
+  const { social } = useServices();
+  const avatar = useAvatar(social, partner.userId, partner.avatarAt);
+  const status = partner.online ? m.friends.online : m.friends.offline;
+  const played = f(m.messages.lastMatch, { when: timeAgo(m, f, partner.lastPlayedAt) });
+  return (
+    <Pressable
+      onPress={() =>
+        router.push({ pathname: '/chat/[userId]', params: { userId: partner.userId, username: partner.username } })
+      }
+      accessibilityRole="button"
+      accessibilityLabel={[
+        f(m.messages.messageUser, { username: partner.username }),
+        status,
+        unread > 0 ? f(m.messages.newCount, { n: unread }) : null,
+      ]
+        .filter(Boolean)
+        .join(', ')}
+      style={({ pressed }) => [styles.row, pressed && styles.iconButtonPressed]}
+    >
+      <Avatar image={avatar} name={partner.username} online={partner.online} />
+      <View style={styles.rowText}>
+        <AppText variant="bodyBold" start numberOfLines={1} style={styles.username}>
+          {partner.username}
+        </AppText>
+        <AppText variant="caption" color={unread > 0 ? colors.accent : colors.textMuted} start numberOfLines={1}>
+          {unread > 0 ? f(m.messages.newCount, { n: unread }) : played}
+        </AppText>
+      </View>
+      {unread > 0 ? (
+        <View style={styles.unread}>
+          <AppText variant="caption" color={colors.background}>
+            {n(unread)}
+          </AppText>
+        </View>
+      ) : null}
+      <Icon name="message-text-outline" color={colors.accent} />
+    </Pressable>
+  );
+}
+
 function IconButton({
   icon,
   label,
@@ -466,6 +524,15 @@ const styles = StyleSheet.create({
     borderRadius: touchTarget / 2,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  unread: {
+    minWidth: 22,
+    height: 22,
+    paddingHorizontal: 6,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.accent,
   },
   fight: {
     flexDirection: 'row',

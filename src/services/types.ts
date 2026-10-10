@@ -166,7 +166,46 @@ export interface PlayerDetails extends RankedPlayer {
   ratings: Record<string, RatingSummary>;
   /** Newest first. */
   history: Activity[];
+  /** You played a 1v1 with them, so you can message each other. */
+  canChat?: boolean;
 }
+
+/** A past 1v1 opponent you can message. */
+export interface ChatPartner {
+  userId: string;
+  username: string;
+  online: boolean;
+  level?: number;
+  rank?: string;
+  avatarAt?: number;
+  lastPlayedAt: number;
+}
+
+export interface ChatMessage {
+  id: string;
+  senderId: string;
+  username: string;
+  text: string;
+  /** Epoch ms. */
+  at: number;
+}
+
+/** An open direct chat with one player. */
+export interface ChatConversation {
+  /** The latest messages when the chat opened, newest first. */
+  readonly history: ChatMessage[];
+  /** Older messages before the ones already loaded (newest first); empty when there are no more. */
+  loadOlder(): Promise<ChatMessage[]>;
+  send(text: string): Promise<void>;
+  /** New messages, including your own once the server accepted them. */
+  subscribe(listener: (message: ChatMessage) => void): () => void;
+  /** The connection dropped; open the chat again to continue. */
+  onDisconnect(listener: () => void): () => void;
+  close(): void;
+}
+
+/** Longest chat message, in characters (the server enforces it too). */
+export const MAX_CHAT_LENGTH = 500;
 
 export interface Avatar {
   /** Base64 JPEG/PNG. */
@@ -194,6 +233,10 @@ export interface SocialService {
   challengeFriend(userId: string, exerciseId: ExerciseId, timeControlId: TimeControlId): Promise<ChallengeMatch>;
   /** Tells the challenger you said no. */
   declineChallenge(invite: ChallengeInvite): Promise<void>;
+  /** Players you played a 1v1 with, most recent first. */
+  listChatPartners(): Promise<ChatPartner[]>;
+  /** Opens the direct chat with a past 1v1 opponent. */
+  openChat(userId: string): Promise<ChatConversation>;
 }
 
 export interface Services {
