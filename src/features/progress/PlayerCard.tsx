@@ -3,22 +3,35 @@ import { StyleSheet, View } from 'react-native';
 import type { Progress } from '../../core/progress/progress';
 import { useI18n } from '../../i18n/useI18n';
 import { AppText } from '../../ui/components/AppText';
+import { Avatar } from '../../ui/components/Avatar';
 import { Icon } from '../../ui/components/Icon';
 import { ProgressBar } from '../../ui/components/ProgressBar';
 import { colors, radius, spacing } from '../../ui/theme';
 
 /** Level badge, rank title and XP progress (competence / accomplishment). */
-export function PlayerCard({ name, progress }: { name: string; progress: Progress }) {
+export function PlayerCard({ name, progress, avatar }: { name: string; progress: Progress; avatar?: string | null }) {
   const { m, f, n } = useI18n();
   const { level } = progress;
   return (
     <View style={styles.card}>
       <View style={styles.row}>
-        <View style={styles.badge} accessible accessibilityLabel={f(m.game.level, { level: level.level })}>
-          <AppText variant="number" color={colors.onGold}>
-            {n(level.level)}
-          </AppText>
-        </View>
+        {avatar !== undefined ? (
+          // Photo with the level as a small badge.
+          <View accessible accessibilityLabel={f(m.game.level, { level: level.level })}>
+            <Avatar image={avatar} name={name} size={56} ringColor={colors.gold} />
+            <View style={styles.miniBadge}>
+              <AppText variant="caption" color={colors.onGold} style={styles.miniBadgeText}>
+                {n(level.level)}
+              </AppText>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.badge} accessible accessibilityLabel={f(m.game.level, { level: level.level })}>
+            <AppText variant="number" color={colors.onGold}>
+              {n(level.level)}
+            </AppText>
+          </View>
+        )}
         <View style={styles.info}>
           <AppText variant="heading" start numberOfLines={1}>
             {name}
@@ -66,6 +79,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.gold,
     transform: [{ rotate: '-4deg' }],
+  },
+  miniBadge: {
+    position: 'absolute',
+    bottom: -4,
+    end: -4,
+    minWidth: 24,
+    height: 24,
+    paddingHorizontal: 4,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.gold,
+    borderWidth: 2,
+    borderColor: colors.surface,
+  },
+  miniBadgeText: {
+    fontWeight: '700',
   },
   info: {
     flex: 1,

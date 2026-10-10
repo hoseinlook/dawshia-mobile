@@ -1,21 +1,35 @@
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../../features/auth/AuthProvider';
+import { SignInRequired } from '../../features/auth/SignInRequired';
 import { useFriends } from '../../features/social/FriendsProvider';
+import { formatScore, timeAgo } from '../../i18n/activity';
 import { exerciseText } from '../../i18n/lookup';
 import { useI18n } from '../../i18n/useI18n';
+import { useServices } from '../../services/ServicesProvider';
 import type { FriendInfo } from '../../services/types';
-import { getTimeControl } from '../../core/match/timeControls';
+import { useAvatar } from '../../features/avatar/avatars';
 import { AppText } from '../../ui/components/AppText';
+import { Avatar } from '../../ui/components/Avatar';
 import { Button } from '../../ui/components/Button';
 import { Icon } from '../../ui/components/Icon';
 import { useScreenOrientation } from '../../ui/hooks/useScreenOrientation';
 import { colors, radius, spacing, touchTarget } from '../../ui/theme';
 
 type Messages = ReturnType<typeof useI18n>['m'];
+type Fill = ReturnType<typeof useI18n>['f'];
 type Feedback = { kind: 'ok' | 'error'; text: string } | null;
 
 export default function FriendsScreen() {
@@ -37,7 +51,7 @@ export default function FriendsScreen() {
     setRefreshing(false);
   };
 
-  if (!available) return <SignedOut />;
+  if (!available) return <SignInRequired title={m.friends.offlineTitle} text={m.friends.offlineText} />;
 
   const incoming = friends?.filter((x) => x.state === 'incoming') ?? [];
   const outgoing = friends?.filter((x) => x.state === 'outgoing') ?? [];
@@ -101,24 +115,6 @@ export default function FriendsScreen() {
   );
 }
 
-function SignedOut() {
-  const { m, dir } = useI18n();
-  const { signOut } = useAuth();
-  return (
-    <SafeAreaView style={[styles.root, dir]} edges={['top']}>
-      <View style={[styles.content, styles.signedOut]}>
-        <Icon name="account-lock-outline" size="xl" color={colors.textMuted} />
-        <AppText variant="heading">{m.friends.offlineTitle}</AppText>
-        <AppText color={colors.textMuted} style={styles.center}>
-          {m.friends.offlineText}
-        </AppText>
-        {/* Leaving offline mode returns to the sign-in screen. */}
-        <Button label={m.friends.signIn} icon="login" onPress={signOut} />
-      </View>
-    </SafeAreaView>
-  );
-}
-
 function AddFriend() {
   const { m, f, textStart } = useI18n();
   const { add } = useFriends();
@@ -137,7 +133,10 @@ function AddFriend() {
     setBusy(true);
     try {
       await add(name);
-      setFeedback({ kind: 'ok', text: f(m.friends.requestSent, { username: name }) });
+      setFeedback({
+        kind: 'ok',
+        text: f(m.friends.requestSent, { username: name }),
+      });
       setUsername('');
     } catch {
       setFeedback({ kind: 'error', text: m.friends.notFound });
@@ -207,6 +206,8 @@ function Section({ title, count, children }: { title: string; count: number; chi
 function FriendRow({ friend }: { friend: FriendInfo }) {
   const { m, f } = useI18n();
   const { add, remove } = useFriends();
+  const { social } = useServices();
+  const avatar = useAvatar(social, friend.userId, friend.avatarAt);
   const [busy, setBusy] = useState(false);
 
   const run = (action: () => Promise<void>) => async () => {
@@ -222,7 +223,11 @@ function FriendRow({ friend }: { friend: FriendInfo }) {
   const confirmRemove = () =>
     Alert.alert(m.friends.remove, f(m.friends.removeConfirm, { username: friend.username }), [
       { text: m.session.stay, style: 'cancel' },
-      { text: m.friends.remove, style: 'destructive', onPress: run(() => remove(friend.userId)) },
+      {
+        text: m.friends.remove,
+        style: 'destructive',
+        onPress: run(() => remove(friend.userId)),
+      },
     ]);
 
   const isFriend = friend.state === 'friend';
@@ -236,58 +241,88 @@ function FriendRow({ friend }: { friend: FriendInfo }) {
 
   return (
     <View style={styles.row} accessible={false}>
-      <View style={styles.avatar}>
-        <AppText variant="heading" color={colors.text}>
-          {friend.username.slice(0, 1).toUpperCase()}
-        </AppText>
-        {isFriend ? (
-          <View
-            style={[styles.dot, { backgroundColor: friend.online ? colors.accent : colors.textMuted }]}
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-          />
-        ) : null}
-      </View>
-
-      <View style={styles.rowText}>
-        <AppText variant="bodyBold" start numberOfLines={1} style={styles.username}>
-          {friend.username}
-        </AppText>
-        {status ? (
-          // Online status is text + color, never color alone.
-          <AppText variant="caption" color={friend.online ? colors.accent : colors.textMuted} start>
-            {status}
-            {rankLine ? ` · ${rankLine}` : ''}
+      <Pressable
+        onPress={() =>
+          router.push({
+            pathname: '/player/[userId]',
+            params: { userId: friend.userId },
+          })
+        }
+        accessibilityRole="button"
+        accessibilityLabel={[friend.username, status, rankLine].filter(Boolean).join(', ')}
+        style={({ pressed }) => [styles.openPlayer, pressed && styles.iconButtonPressed]}
+      >
+        <Avatar image={avatar} name={friend.username} online={isFriend ? friend.online : undefined} />
+        <View style={styles.rowText}>
+          <AppText variant="bodyBold" start numberOfLines={1} style={styles.username}>
+            {friend.username}
           </AppText>
-        ) : (
-          <AppText variant="caption" color={colors.textMuted} start>
-            {friend.state === 'outgoing' ? m.friends.pending : rankLine}
-          </AppText>
-        )}
-        {isFriend ? (
-          <AppText variant="caption" color={colors.textMuted} start numberOfLines={2}>
-            {friend.lastActivity ? lastPracticeText(m, f, friend.lastActivity) : m.friends.noActivity}
-          </AppText>
-        ) : null}
-      </View>
+          {status ? (
+            // Online status is text + color, never color alone.
+            <AppText variant="caption" color={friend.online ? colors.accent : colors.textMuted} start>
+              {status}
+              {rankLine ? ` · ${rankLine}` : ''}
+            </AppText>
+          ) : (
+            <AppText variant="caption" color={colors.textMuted} start>
+              {friend.state === 'outgoing' ? m.friends.pending : rankLine}
+            </AppText>
+          )}
+          {isFriend ? (
+            <AppText variant="caption" color={colors.textMuted} start numberOfLines={2}>
+              {friend.lastActivity ? lastPracticeText(m, f, friend.lastActivity) : m.friends.noActivity}
+            </AppText>
+          ) : null}
+        </View>
+      </Pressable>
 
       {busy ? (
         <ActivityIndicator color={colors.accent} style={styles.iconButton} />
       ) : friend.state === 'incoming' ? (
         <View style={styles.actions}>
-          <IconButton icon="check" label={m.friends.accept} color={colors.accent} onPress={run(() => add(friend.username))} />
-          <IconButton icon="close" label={m.friends.decline} color={colors.danger} onPress={run(() => remove(friend.userId))} />
+          <IconButton
+            icon="check"
+            label={m.friends.accept}
+            color={colors.accent}
+            onPress={run(() => add(friend.username))}
+          />
+          <IconButton
+            icon="close"
+            label={m.friends.decline}
+            color={colors.danger}
+            onPress={run(() => remove(friend.userId))}
+          />
         </View>
       ) : friend.state === 'outgoing' ? (
-        <IconButton icon="close" label={m.friends.cancelRequest} color={colors.textMuted} onPress={run(() => remove(friend.userId))} />
+        <IconButton
+          icon="close"
+          label={m.friends.cancelRequest}
+          color={colors.textMuted}
+          onPress={run(() => remove(friend.userId))}
+        />
       ) : (
-        <IconButton icon="account-remove-outline" label={m.friends.remove} color={colors.textMuted} onPress={confirmRemove} />
+        <IconButton
+          icon="account-remove-outline"
+          label={m.friends.remove}
+          color={colors.textMuted}
+          onPress={confirmRemove}
+        />
       )}
     </View>
   );
 }
 
-function IconButton({ icon, label, color, onPress }: { icon: React.ComponentProps<typeof Icon>['name']; label: string; color: string; onPress: () => void }) {
+function IconButton({
+  icon,
+  label,
+  color,
+  onPress,
+}: {
+  icon: React.ComponentProps<typeof Icon>['name'];
+  label: string;
+  color: string;
+  onPress: () => void;
+}) {
   return (
     <Pressable
       onPress={onPress}
@@ -301,28 +336,13 @@ function IconButton({ icon, label, color, onPress }: { icon: React.ComponentProp
   );
 }
 
-function lastPracticeText(
-  m: Messages,
-  f: (t: string, p?: Record<string, string | number>) => string,
-  a: NonNullable<FriendInfo['lastActivity']>,
-): string {
-  const format = getTimeControl(a.timeControl).format;
-  const score =
-    format === 'maxHold'
-      ? f(m.game.seconds, { seconds: a.score })
-      : format === 'game'
-        ? f(m.game.pipes, { count: a.score })
-        : f(m.friends.repsScore, { count: a.score });
-  return f(m.friends.lastPractice, { exercise: exerciseText(m, a.exercise).name, score, when: timeAgo(m, f, a.at) });
-}
-
-function timeAgo(m: Messages, f: (t: string, p?: Record<string, string | number>) => string, at: number): string {
-  const minutes = Math.floor((Date.now() - at) / 60_000);
-  if (minutes < 1) return m.friends.justNow;
-  if (minutes < 60) return f(m.friends.minutesAgo, { n: minutes });
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return f(m.friends.hoursAgo, { n: hours });
-  return f(m.friends.daysAgo, { n: Math.floor(hours / 24) });
+function lastPracticeText(m: Messages, f: Fill, a: NonNullable<FriendInfo['lastActivity']>): string {
+  const score = formatScore(m, f, a.timeControl, a.score);
+  return f(m.friends.lastPractice, {
+    exercise: exerciseText(m, a.exercise).name,
+    score,
+    when: timeAgo(m, f, a.at),
+  });
 }
 
 const styles = StyleSheet.create({
@@ -334,11 +354,6 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     paddingTop: spacing.lg,
     gap: spacing.md,
-  },
-  signedOut: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   center: {
     textAlign: 'center',
@@ -402,28 +417,17 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    gap: spacing.sm,
     padding: spacing.md,
     borderRadius: radius.md,
     backgroundColor: colors.surface,
   },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  openPlayer: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.surfaceRaised,
-  },
-  dot: {
-    position: 'absolute',
-    bottom: 0,
-    end: 0,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    borderWidth: 2,
-    borderColor: colors.surface,
+    gap: spacing.md,
+    borderRadius: radius.md,
   },
   rowText: {
     flex: 1,

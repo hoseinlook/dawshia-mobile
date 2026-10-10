@@ -3,10 +3,13 @@ import type { MatchResult } from '../../core/match/types';
 import { scoreValue } from '../../core/progress/progress';
 import { localDateString, type ExerciseTotals } from '../../core/stats/repTotals';
 import type {
+  Avatar,
   FriendInfo,
   MatchHistoryRepository,
+  PlayerDetails,
   Profile,
   ProfileService,
+  RankedPlayer,
   RatingSummary,
   Services,
   SocialService,
@@ -103,6 +106,21 @@ function remoteSocial(session: SessionManager): SocialService {
     },
     async updatePublicProfile(profile) {
       await session.rpc('update_public_profile', profile);
+    },
+    async listTopPlayers() {
+      const r = await session.rpc<{ players: RankedPlayer[]; me?: RankedPlayer }>('get_top_players', { limit: 50 });
+      return { players: r.players ?? [], me: r.me ?? null };
+    },
+    async getPlayer(userId) {
+      return session.rpc<PlayerDetails>('get_player', { userId, today: localDateString(new Date()) });
+    },
+    async setAvatar(base64) {
+      await session.rpc('set_avatar', { image: base64 ?? '' });
+    },
+    async getAvatars(userIds) {
+      if (userIds.length === 0) return {};
+      const r = await session.rpc<{ avatars: Record<string, Avatar> }>('get_avatars', { userIds });
+      return r.avatars ?? {};
     },
   };
 }

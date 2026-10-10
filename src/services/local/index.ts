@@ -92,6 +92,14 @@ const offlineSocial: SocialService = {
   },
   removeFriend: async () => {},
   updatePublicProfile: async () => {},
+  listTopPlayers: async () => {
+    throw new Error('signInRequired');
+  },
+  getPlayer: async () => {
+    throw new Error('signInRequired');
+  },
+  setAvatar: async () => {},
+  getAvatars: async () => ({}),
 };
 
 export function createLocalServices(): Services {

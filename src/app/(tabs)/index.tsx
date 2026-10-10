@@ -7,6 +7,7 @@ import { listExercises } from '../../core/exercises/registry';
 import { isGame, isHold } from '../../core/match/timeControls';
 import { computeProgress, personalBest } from '../../core/progress/progress';
 import { useAuth } from '../../features/auth/AuthProvider';
+import { useMyAvatar } from '../../features/avatar/avatars';
 import { PlayerCard } from '../../features/progress/PlayerCard';
 import { TodayCard } from '../../features/progress/TodayCard';
 import { useHistory } from '../../features/progress/useHistory';
@@ -29,6 +30,7 @@ export default function HomeScreen() {
   const history = useHistory();
   const progress = useMemo(() => (history ? computeProgress(history, new Date()) : null), [history]);
   usePublishProfile(progress);
+  const myAvatar = useMyAvatar();
   // Quick restart of the most recent competition (fewer taps for the core loop).
   const last = useMemo(() => {
     if (!history?.length) return null;
@@ -50,7 +52,7 @@ export default function HomeScreen() {
 
         {progress ? (
           <>
-            <PlayerCard name={session?.username ?? m.common.you} progress={progress} />
+            <PlayerCard name={session?.username ?? m.common.you} progress={progress} avatar={myAvatar} />
             <TodayCard progress={progress} />
           </>
         ) : null}

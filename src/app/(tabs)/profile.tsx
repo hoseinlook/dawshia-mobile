@@ -7,6 +7,8 @@ import { getExercise } from '../../core/exercises/registry';
 import { isGame, isHold } from '../../core/match/timeControls';
 import { ACHIEVEMENTS, computeProgress } from '../../core/progress/progress';
 import type { ExerciseTotals } from '../../core/stats/repTotals';
+import { useAuth } from '../../features/auth/AuthProvider';
+import { ProfilePhoto } from '../../features/avatar/ProfilePhoto';
 import { AchievementBadge } from '../../features/progress/AchievementBadge';
 import { PlayerCard } from '../../features/progress/PlayerCard';
 import { useHistory } from '../../features/progress/useHistory';
@@ -26,6 +28,7 @@ export default function ProfileScreen() {
   useScreenOrientation('portrait');
   const { m, f, dir } = useI18n();
   const { profile: profileService } = useServices();
+  const { session } = useAuth();
   const history = useHistory();
   const progress = useMemo(() => (history ? computeProgress(history, new Date()) : null), [history]);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -77,7 +80,8 @@ export default function ProfileScreen() {
           <ActivityIndicator color={colors.text} style={styles.loading} />
         ) : (
           <>
-            <PlayerCard name={profile.displayName ?? m.common.you} progress={progress} />
+            <ProfilePhoto name={profile.displayName ?? session?.username ?? m.common.you} />
+            <PlayerCard name={profile.displayName ?? session?.username ?? m.common.you} progress={progress} />
 
             <View style={styles.source}>
               <Icon

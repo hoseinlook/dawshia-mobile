@@ -3,6 +3,9 @@ import Animated, { FadeIn, FadeOut, SlideInLeft, SlideInRight, ZoomIn } from 're
 
 import type { Participant } from '../../../core/match/types';
 import { useI18n } from '../../../i18n/useI18n';
+import { useServices } from '../../../services/ServicesProvider';
+import { Avatar } from '../../../ui/components/Avatar';
+import { useAvatar, useMyAvatar } from '../../avatar/avatars';
 import { AppText } from '../../../ui/components/AppText';
 import { colors, fonts, radius, spacing } from '../../../ui/theme';
 
@@ -51,6 +54,9 @@ export function VsIntro({ you, opponent, exerciseName, onDismiss }: Props) {
 
 function PlayerPlate({ player, color, title }: { player: Participant; color: string; title: string }) {
   const { m, f } = useI18n();
+  const { social } = useServices();
+  const mine = useMyAvatar();
+  const theirs = useAvatar(social, player.isLocal ? undefined : player.id, player.profile?.avatarAt);
   const p = player.profile;
   const rank = p?.rank && p.rank in m.ranks ? m.ranks[p.rank as keyof typeof m.ranks] : null;
   return (
@@ -58,9 +64,7 @@ function PlayerPlate({ player, color, title }: { player: Participant; color: str
       <AppText variant="caption" color={color} center>
         {title}
       </AppText>
-      <View style={[styles.avatar, { backgroundColor: color }]}>
-        <AppText style={styles.initial}>{player.displayName.slice(0, 1).toUpperCase()}</AppText>
-      </View>
+      <Avatar image={player.isLocal ? mine : theirs} name={player.displayName} size={72} ringColor={color} />
       <AppText variant="heading" center numberOfLines={1} style={styles.name}>
         {player.displayName}
       </AppText>
@@ -108,19 +112,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 2,
     backgroundColor: colors.surface,
-  },
-  avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  initial: {
-    color: colors.background,
-    fontFamily: fonts.display,
-    fontSize: 36,
-    lineHeight: 42,
   },
   name: {
     writingDirection: 'ltr',

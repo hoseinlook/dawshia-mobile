@@ -6,7 +6,9 @@ import { View } from 'react-native';
 
 import { AuthProvider, useAuth } from '../features/auth/AuthProvider';
 import { preloadPoseEngine } from '../features/pose/poseEngine';
+import { FriendsProvider } from '../features/social/FriendsProvider';
 import { usePresence } from '../features/social/usePresence';
+import { useRestoreAvatar } from '../features/avatar/useRestoreAvatar';
 import { SettingsProvider } from '../features/settings/SettingsProvider';
 import { ServicesProvider } from '../services/ServicesProvider';
 import { FONT_ASSETS } from '../ui/fonts';
@@ -29,7 +31,9 @@ export default function RootLayout() {
       <AuthProvider>
         <ServicesProvider>
           <StatusBar style="light" />
-          <AppStack />
+          <FriendsProvider>
+            <AppStack />
+          </FriendsProvider>
         </ServicesProvider>
       </AuthProvider>
     </SettingsProvider>
@@ -40,6 +44,7 @@ export default function RootLayout() {
 function AppStack() {
   const { status } = useAuth();
   usePresence(); // online status for friends while signed in
+  useRestoreAvatar(); // your photo from the server on a new phone
   const inApp = status !== 'signedOut';
 
   return (
@@ -54,6 +59,7 @@ function AppStack() {
         <Stack.Screen name="exercise/[exerciseId]" />
         <Stack.Screen name="session/[exerciseId]" options={{ gestureEnabled: false }} />
         <Stack.Screen name="results" />
+        <Stack.Screen name="player/[userId]" />
       </Stack.Protected>
       <Stack.Protected guard={!inApp}>
         <Stack.Screen name="login" />

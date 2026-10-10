@@ -108,7 +108,48 @@ export interface FriendInfo {
   state: 'friend' | 'incoming' | 'outgoing';
   level?: number;
   rank?: string;
-  lastActivity?: { exercise: string; timeControl: string; mode: string; score: number; at: number };
+  lastActivity?: Activity;
+  /** When the profile photo last changed (absent = no photo). */
+  avatarAt?: number;
+}
+
+/** One finished practice or match, as other players see it. */
+export interface Activity {
+  exercise: string;
+  timeControl: string;
+  mode: string;
+  /** Score in the competition's unit: reps, seconds held or pipes. */
+  score: number;
+  at: number;
+  /** 1v1 only. */
+  outcome?: 'win' | 'loss' | 'draw';
+}
+
+/** A player in the level ranking. */
+export interface RankedPlayer {
+  userId: string;
+  username: string;
+  level: number;
+  rank: string;
+  xp: number;
+  online: boolean;
+  avatarAt?: number;
+  /** 1 = top; absent when not ranked yet. */
+  position?: number;
+}
+
+/** A player's page: per-movement totals, ratings and recent sessions. */
+export interface PlayerDetails extends RankedPlayer {
+  exercises: { exercise: string; today: number; month: number; total: number }[];
+  ratings: Record<string, RatingSummary>;
+  /** Newest first. */
+  history: Activity[];
+}
+
+export interface Avatar {
+  /** Base64 JPEG/PNG. */
+  image: string;
+  updatedAt: number;
 }
 
 export interface SocialService {
@@ -119,8 +160,14 @@ export interface SocialService {
   addFriend(username: string): Promise<void>;
   /** Removes a friend, cancels a sent request or declines a received one. */
   removeFriend(userId: string): Promise<void>;
-  /** Publishes level and rank so friends and opponents can see them. */
-  updatePublicProfile(profile: { level: number; rank: string }): Promise<void>;
+  /** Publishes total XP (the server derives level and rank) for friends, opponents and rankings. */
+  updatePublicProfile(profile: { xp: number }): Promise<void>;
+  /** Top players by level, plus the caller's own position. */
+  listTopPlayers(): Promise<{ players: RankedPlayer[]; me: RankedPlayer | null }>;
+  getPlayer(userId: string): Promise<PlayerDetails>;
+  /** Uploads (or with null removes) the caller's profile photo. */
+  setAvatar(base64: string | null): Promise<void>;
+  getAvatars(userIds: string[]): Promise<Record<string, Avatar>>;
 }
 
 export interface Services {

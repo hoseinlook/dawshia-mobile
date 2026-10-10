@@ -1,23 +1,15 @@
 import { Tabs } from 'expo-router';
 
-import { FriendsProvider, useFriends } from '../../features/social/FriendsProvider';
+import { useFriends } from '../../features/social/FriendsProvider';
 import { useI18n } from '../../i18n/useI18n';
 import { Icon, type IconName } from '../../ui/components/Icon';
 import { colors, fonts } from '../../ui/theme';
 
 /**
  * Top-level navigation: a bottom tab bar (icon + label, active state) for the
- * four main destinations. Sessions, competitions and results open above it.
+ * five main destinations. Sessions, competitions and results open above it.
  */
 export default function TabsLayout() {
-  return (
-    <FriendsProvider>
-      <TabsNavigator />
-    </FriendsProvider>
-  );
-}
-
-function TabsNavigator() {
   const { m, n } = useI18n();
   const { incomingCount } = useFriends();
   const icon = (name: IconName) =>
@@ -38,6 +30,7 @@ function TabsNavigator() {
       }}
     >
       <Tabs.Screen name="index" options={{ title: m.tabs.home, tabBarIcon: icon('home-variant') }} />
+      <Tabs.Screen name="ranking" options={{ title: m.tabs.ranking, tabBarIcon: icon('trophy') }} />
       <Tabs.Screen
         name="friends"
         options={{

@@ -9,7 +9,7 @@ export interface Participant {
   /** True for the athlete on this device; false for a remote opponent. */
   isLocal: boolean;
   /** Online: public profile shown on the VS screen. */
-  profile?: { rating?: number; level?: number; rank?: string };
+  profile?: { rating?: number; level?: number; rank?: string; avatarAt?: number };
 }
 
 export interface ParticipantScore {

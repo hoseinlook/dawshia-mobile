@@ -124,7 +124,7 @@ Persian (`fa`, right-to-left) is the default; English (`en`) can be picked in **
   - The session is saved on the phone and refreshed automatically, so you stay signed in for 30 days of inactivity.
   - **Continue offline** skips the account. Practice still works, and stats stay on the phone.
 - **Server address:** hard-coded in `src/services/remote/config.ts` (`SERVER_URL`, currently `http://192.168.1.105:7350`). TODO: make it configurable per build and use HTTPS for release builds.
-- **Navigation:** a bottom tab bar with **Home**, **Friends**, **Profile** and **Settings**. Competitions, sessions and results open above it.
+- **Navigation:** a bottom tab bar with **Home**, **Ranking**, **Friends**, **Profile** and **Settings**. Competitions, sessions and results open above it.
 - **Profile** (👤 tab): each movement's valid reps **today**, **this month** and **in total**.
   - Signed in, it reads from the server, and every finished practice session is sent there.
   - Offline, or when the server is unreachable, it uses the history saved on the phone and shows the technical reason.
@@ -182,6 +182,30 @@ How a hold works:
 
 **Results:** win, lose or draw, the opponent's score and your **rating change**. Leaving mid-match counts as a forfeit, so the app asks before you leave (Quit button or Android back).
 
+## Profile photo, ranking and player pages
+
+- **Profile photo:**
+  - Tap the photo on the **Profile** tab to choose one from the gallery, cropped square.
+  - It is shrunk to a small JPEG (256 px, under 48 KB) and saved on the phone, so it also works offline.
+  - When signed in, it is uploaded so other players see it in rankings, friends, player pages and the VS screen. Remove it from the same menu.
+  - Other players' photos are fetched in batches and cached by the `avatarAt` timestamp the server sends with each player (`features/avatar/avatars.ts`).
+- **Ranking tab:**
+  - The top 50 players by level, with your own position at the top.
+  - Each row shows the photo, rank title, level, an XP bar relative to #1, online status and the level gap to you ("3 levels above you").
+  - The level comes from XP, which the app publishes and the server converts with the same curve.
+- **Player page** (tap a player in Ranking or Friends):
+  - Their level compared with yours, and an add-friend button.
+  - A card for every movement they trained:
+    - today / month / total
+    - number of sessions, best score and best rating
+    - win/loss count
+    - a **history** list (competition, practice or 1v1, score, result, how long ago)
+
+End-to-end test (photos, ranking, player page):
+```sh
+npx tsx scripts/e2e/players.ts http://localhost:7350
+```
+
 ## Friends
 
 The **Friends** tab (signed in only):
@@ -193,7 +217,7 @@ The **Friends** tab (signed in only):
   - **last practice** (movement, score, how long ago)
 - The list refreshes every 30 s and on pull-down.
 
-Online status comes from a presence socket that is open while the app is in the foreground (`features/social/usePresence.ts`). Level and rank are published from Home when they change (`usePublishProfile`).
+Online status comes from a presence socket that is open while the app is in the foreground (`features/social/usePresence.ts`). Your total XP is published from Home when it changes (`usePublishProfile`); the server derives level and rank from it.
 
 End-to-end test (friends, presence, last practice, VS profile, chat):
 ```sh

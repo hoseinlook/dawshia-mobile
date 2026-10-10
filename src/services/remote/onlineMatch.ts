@@ -27,6 +27,7 @@ interface ServerPlayer {
   rating?: number;
   level?: number;
   rank?: string;
+  avatarAt?: number;
 }
 
 interface ServerState {
@@ -140,7 +141,7 @@ export class OnlineMatch implements MatchTransport {
         id: p.userId,
         displayName: p.username,
         isLocal: p.userId === this.selfUserId,
-        profile: { rating: p.rating, level: p.level, rank: p.rank },
+        profile: { rating: p.rating, level: p.level, rank: p.rank, avatarAt: p.avatarAt },
       })),
       seed: state.seed,
       online: true,

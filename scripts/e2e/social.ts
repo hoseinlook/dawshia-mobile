@@ -33,7 +33,7 @@ async function main() {
   const b = await player(`socb${tag}`);
 
   console.log('friends');
-  await a.rpc('update_public_profile', { level: 4, rank: 'fighter' });
+  await a.rpc('update_public_profile', { xp: 650 }); // level 4 → fighter
   await a.rpc('add_friend', { username: b.name });
   check((await b.friends()).some((f) => f.userId === a.userId && f.state === 'incoming'), 'B sees A’s request as incoming');
   check((await a.friends()).some((f) => f.userId === b.userId && f.state === 'outgoing'), 'A sees the request as outgoing');

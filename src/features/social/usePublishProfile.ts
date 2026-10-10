@@ -3,22 +3,19 @@ import { useEffect } from 'react';
 import type { Progress } from '../../core/progress/progress';
 import { useServices } from '../../services/ServicesProvider';
 
-let lastPublished = '';
+let lastPublished = -1;
 
-/** Publishes level and rank (for friends and opponents) whenever they change. */
+/** Publishes total XP (level and rank for friends, opponents and rankings) whenever it changes. */
 export function usePublishProfile(progress: Progress | null): void {
   const { social } = useServices();
-  const level = progress?.level.level;
-  const rank = progress?.rank;
+  const xp = progress?.totalXp;
   useEffect(() => {
-    if (!social.available || !level || !rank) return;
-    const key = `${level}:${rank}`;
-    if (key === lastPublished) return;
+    if (!social.available || xp === undefined || xp === lastPublished) return;
     social
-      .updatePublicProfile({ level, rank })
+      .updatePublicProfile({ xp: Math.round(xp) })
       .then(() => {
-        lastPublished = key;
+        lastPublished = xp;
       })
       .catch(() => {});
-  }, [social, level, rank]);
+  }, [social, xp]);
 }
