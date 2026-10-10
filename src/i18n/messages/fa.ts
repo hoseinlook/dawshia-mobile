@@ -125,6 +125,26 @@ export const fa = {
     daysAgo: '{n} روز پیش',
     repsScore: '{count} تکرار',
   },
+  challenge: {
+    fight: 'مبارزه',
+    fightLabel: 'دعوت {username} به مبارزهٔ ۱ به ۱',
+    title: 'مبارزه با {username}',
+    subtitle: 'حرکت و نوع مسابقه را انتخاب کن. {username} ۶۰ ثانیه وقت دارد قبول کند.',
+    movement: 'حرکت',
+    competition: 'نوع مسابقه',
+    send: 'ارسال دعوت مبارزه',
+    offline: '{username} الان آفلاین است.',
+    sendError: 'ارسال دعوت ناموفق بود.',
+    waiting: 'منتظر قبول {username}…',
+    joining: 'ورود به مبارزه با {username}…',
+    secondsLeft: '{seconds} ثانیه مانده',
+    incoming: '{username} تو را به مبارزه دعوت کرد!',
+    accept: 'بزن بریم!',
+    decline: 'الان نه',
+    declined: '{username} این بار قبول نکرد.',
+    noAnswer: '{username} جواب نداد.',
+    expired: 'این دعوت مبارزه تمام شده است.',
+  },
   ranking: {
     title: 'برترین بازیکنان',
     subtitle: 'رتبه‌بندی بر اساس سطح. هر تکرار درست امتیاز تجربه می‌دهد.',
@@ -415,10 +435,6 @@ export const fa = {
 };
 
 /** Same shape as `fa`, with plain `string` / `string[]` leaves. */
-type Widen<T> = T extends string
-  ? string
-  : T extends readonly string[]
-    ? string[]
-    : { [K in keyof T]: Widen<T[K]> };
+type Widen<T> = T extends string ? string : T extends readonly string[] ? string[] : { [K in keyof T]: Widen<T[K]> };
 
 export type Messages = Widen<typeof fa>;

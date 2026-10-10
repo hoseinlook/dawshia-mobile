@@ -1,7 +1,8 @@
 import { getTimeControl, type TimeControlId } from '../../core/match/timeControls';
 import type { FinishReason, MatchAction, MatchConfig, MatchStatus, ParticipantScore } from '../../core/match/types';
-import type { LiveEvent, MatchRequest, MatchTransport, ServerResult } from '../types';
+import { ChallengeError, type LiveEvent, type MatchRequest, type MatchTransport, type ServerResult } from '../types';
 import { fromBase64, NakamaSocket, toBase64 } from './nakamaSocket';
+import { Notify, parseNotifications } from './notifications';
 
 /** Op codes — must match dawshia-server/internal/match/protocol.go. */
 export const Op = {
@@ -65,7 +66,10 @@ const PHASES: Record<ServerState['phase'], MatchStatus> = {
 };
 
 /** A player's server score in the app's units (reps / hold ms / points). */
-function toScore(timeControlId: string, p: { reps: number; rejected: number; value: number; done: boolean }): Partial<ParticipantScore> {
+function toScore(
+  timeControlId: string,
+  p: { reps: number; rejected: number; value: number; done: boolean },
+): Partial<ParticipantScore> {
   const format = getTimeControl(timeControlId).format;
   return {
     reps: p.reps,
@@ -100,7 +104,16 @@ export class OnlineMatch implements MatchTransport {
       this.onData(Number(d.op_code), d.data ? JSON.parse(fromBase64(d.data)) : {});
     });
     const offDisconnect = socket.on('disconnect', () => {
-      if (!this.finished) this.emitAction({ type: 'serverPhase', status: 'finished', countdownEndsAtMs: null, startedAtMs: null, endsAtMs: null, finishReason: 'aborted', nowMs: Date.now() });
+      if (!this.finished)
+        this.emitAction({
+          type: 'serverPhase',
+          status: 'finished',
+          countdownEndsAtMs: null,
+          startedAtMs: null,
+          endsAtMs: null,
+          finishReason: 'aborted',
+          nowMs: Date.now(),
+        });
     });
     this.unsubscribe = () => {
       offData();
@@ -207,7 +220,12 @@ export class OnlineMatch implements MatchTransport {
 
   private sendOp(op: number, payload: unknown, reliable = true): void {
     this.socket.send({
-      match_data_send: { match_id: this.matchId, op_code: String(op), data: toBase64(JSON.stringify(payload)), reliable },
+      match_data_send: {
+        match_id: this.matchId,
+        op_code: String(op),
+        data: toBase64(JSON.stringify(payload)),
+        reliable,
+      },
     });
   }
 
@@ -224,17 +242,24 @@ export class OnlineMatch implements MatchTransport {
       case Op.Score: {
         const p = payload as ServerPlayer;
         if (p.userId === this.selfUserId) break; // our own score is counted locally
-        this.emitAction({ type: 'syncScore', participantId: p.userId, score: toScore(this.timeControlId, p), nowMs: now });
+        this.emitAction({
+          type: 'syncScore',
+          participantId: p.userId,
+          score: toScore(this.timeControlId, p),
+          nowMs: now,
+        });
         break;
       }
       case Op.Chat: {
         const c = payload as { userId: string; code: string };
-        if (c.userId !== this.selfUserId) for (const l of this.liveListeners) l({ type: 'chat', participantId: c.userId, code: c.code });
+        if (c.userId !== this.selfUserId)
+          for (const l of this.liveListeners) l({ type: 'chat', participantId: c.userId, code: c.code });
         break;
       }
       case Op.Bird: {
         const b = payload as { userId: string; y: number };
-        if (b.userId !== this.selfUserId) for (const l of this.liveListeners) l({ type: 'bird', participantId: b.userId, y: b.y });
+        if (b.userId !== this.selfUserId)
+          for (const l of this.liveListeners) l({ type: 'bird', participantId: b.userId, y: b.y });
         break;
       }
       case Op.Finished: {
@@ -247,7 +272,15 @@ export class OnlineMatch implements MatchTransport {
           }
         }
         for (const l of this.resultListeners) l({ reason: REASONS[f.reason], ratings });
-        this.emitAction({ type: 'serverPhase', status: 'finished', countdownEndsAtMs: null, startedAtMs: null, endsAtMs: null, finishReason: REASONS[f.reason], nowMs: now });
+        this.emitAction({
+          type: 'serverPhase',
+          status: 'finished',
+          countdownEndsAtMs: null,
+          startedAtMs: null,
+          endsAtMs: null,
+          finishReason: REASONS[f.reason],
+          nowMs: now,
+        });
         break;
       }
     }
@@ -330,4 +363,59 @@ export async function findOnlineMatch(params: {
   await socket.request({ match_join: { match_id: matchId } });
   await Promise.race([match.waitForPlayers(2), cancelled]);
   return { match, config: match.toConfig(request.mode) };
+}
+
+/**
+ * Friend challenge: join the private match created by `challenge_friend` and
+ * wait for the other player. The challenger waits until the challenge expires
+ * or the friend declines; the friend who accepted finds the challenger already there.
+ */
+export async function joinChallengeMatch(params: {
+  token: string;
+  selfUserId: string;
+  request: MatchRequest;
+  signal?: AbortSignal;
+  baseUrl?: string;
+}): Promise<{ match: OnlineMatch; config: MatchConfig }> {
+  const { token, selfUserId, request, signal } = params;
+  const { matchId, expiresAt } = request.challenge!;
+  const socket = new NakamaSocket(params.baseUrl);
+  await socket.connect(token);
+
+  const match = new OnlineMatch(socket, matchId, selfUserId, request.timeControlId);
+  let stop: (e: Error) => void = () => {};
+  const stopped = new Promise<never>((_, reject) => {
+    stop = reject;
+  });
+  stopped.catch(() => {}); // may settle after the race is over
+  // Notifications reach every open socket of the user, including this one.
+  socket.on('notifications', (payload) => {
+    for (const n of parseNotifications(payload)) {
+      if (n.code === Notify.ChallengeDeclined && n.content.matchId === matchId) stop(new ChallengeError('declined'));
+    }
+  });
+  const onAbort = () => stop(new Error('Matchmaking cancelled'));
+  signal?.addEventListener('abort', onAbort);
+
+  try {
+    if (signal?.aborted) throw new Error('Matchmaking cancelled');
+    try {
+      await socket.request({ match_join: { match_id: matchId } });
+    } catch {
+      throw new ChallengeError('expired'); // cancelled by the challenger, or timed out
+    }
+    const waitMs = expiresAt ? Math.max(1000, expiresAt - Date.now()) : 60_000;
+    await Promise.race([
+      match.waitForPlayers(2, waitMs).catch(() => {
+        throw new ChallengeError('noAnswer');
+      }),
+      stopped,
+    ]);
+    return { match, config: match.toConfig(request.mode) };
+  } catch (e) {
+    match.close(); // leaving a waiting challenge cancels it on the server
+    throw e;
+  } finally {
+    signal?.removeEventListener('abort', onAbort);
+  }
 }

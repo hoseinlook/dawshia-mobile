@@ -4,16 +4,10 @@ import type { ExerciseDefinition, ExerciseEvent, FormCue } from '../../core/exer
 import { FlappyGame, type FlappyState } from '../../core/games/flappy';
 import { computeResult, createMatchState, matchReducer } from '../../core/match/matchReducer';
 import { isGame, isHold, type TimeControlId } from '../../core/match/timeControls';
-import type {
-  MatchAction,
-  MatchConfig,
-  MatchMode,
-  MatchResult,
-  MatchState,
-} from '../../core/match/types';
+import type { MatchAction, MatchConfig, MatchMode, MatchResult, MatchState } from '../../core/match/types';
 import type { Pose } from '../../core/pose/types';
 import { useServices } from '../../services/ServicesProvider';
-import type { MatchTransport, ServerResult } from '../../services/types';
+import type { ChallengeMatch, MatchTransport, ServerResult } from '../../services/types';
 
 /** How long the athlete must hold the start position before the countdown begins. */
 const READY_HOLD_MS = 1500;
@@ -75,6 +69,8 @@ interface Options {
   exercise: ExerciseDefinition;
   timeControlId: TimeControlId;
   mode: MatchMode;
+  /** Friend challenge: join this private match. */
+  challenge?: ChallengeMatch;
 }
 
 /**
@@ -85,7 +81,7 @@ interface Options {
  * charge: the countdown starts when every player is ready, phases and scores
  * arrive as `serverPhase` / `syncScore`, and the final result carries ratings.
  */
-export function useMatchSession({ exercise, timeControlId, mode }: Options) {
+export function useMatchSession({ exercise, timeControlId, mode, challenge }: Options) {
   const services = useServices();
   const [match, dispatch] = useReducer(sessionReducer, null);
   const [error, setError] = useState<Error | null>(null);
@@ -125,13 +121,21 @@ export function useMatchSession({ exercise, timeControlId, mode }: Options) {
   }, []);
 
   // 1. Find / create the match (online: matchmaking until an opponent is found).
+  const challengeMatchId = challenge?.matchId;
+  const challengeExpiresAt = challenge?.expiresAt;
   useEffect(() => {
     const abort = new AbortController();
     (async () => {
       try {
         const player = await services.auth.getCurrentPlayer();
         const config = await services.matchmaking.findMatch(
-          { mode, exerciseId: exercise.id, timeControlId, player },
+          {
+            mode,
+            exerciseId: exercise.id,
+            timeControlId,
+            player,
+            challenge: challengeMatchId ? { matchId: challengeMatchId, expiresAt: challengeExpiresAt ?? 0 } : undefined,
+          },
           abort.signal,
         );
         if (abort.signal.aborted) return;
@@ -141,7 +145,7 @@ export function useMatchSession({ exercise, timeControlId, mode }: Options) {
       }
     })();
     return () => abort.abort();
-  }, [services, mode, exercise.id, timeControlId]);
+  }, [services, mode, exercise.id, timeControlId, challengeMatchId, challengeExpiresAt]);
 
   // 2. Real-time channel: server state, opponents' scores and ghost birds.
   const matchConfig = match?.config;
@@ -288,7 +292,8 @@ export function useMatchSession({ exercise, timeControlId, mode }: Options) {
       if (live) {
         for (const event of update.events) {
           lastEvent = event;
-          if (event.type === 'rep') comboChange = comboChange === 'none' || comboChange === 'reset' ? 1 : comboChange + 1;
+          if (event.type === 'rep')
+            comboChange = comboChange === 'none' || comboChange === 'reset' ? 1 : comboChange + 1;
           else comboChange = 'reset';
           act(
             event.type === 'rep'
@@ -305,8 +310,7 @@ export function useMatchSession({ exercise, timeControlId, mode }: Options) {
         metrics: update.metrics,
         readiness,
         lastEvent: lastEvent ?? prev.lastEvent,
-        combo:
-          comboChange === 'none' ? prev.combo : comboChange === 'reset' ? 0 : prev.combo + comboChange,
+        combo: comboChange === 'none' ? prev.combo : comboChange === 'reset' ? 0 : prev.combo + comboChange,
         waitingForOpponent,
         game: gameState,
       }));
@@ -320,7 +324,8 @@ export function useMatchSession({ exercise, timeControlId, mode }: Options) {
   const sendChat = useCallback(
     (code: ChatCode): boolean => {
       const now = Date.now();
-      if (!localParticipantId || !transportRef.current || now - lastChatSentRef.current < CHAT_COOLDOWN_MS) return false;
+      if (!localParticipantId || !transportRef.current || now - lastChatSentRef.current < CHAT_COOLDOWN_MS)
+        return false;
       lastChatSentRef.current = now;
       transportRef.current.sendLive({ type: 'chat', participantId: localParticipantId, code });
       setChat((prev) => ({ ...prev, [localParticipantId]: { code, atMs: now } }));

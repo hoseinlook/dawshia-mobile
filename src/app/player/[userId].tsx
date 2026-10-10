@@ -116,7 +116,24 @@ function FriendAction({ player }: { player: PlayerDetails }) {
   const state = friends.find((x) => x.userId === player.userId)?.state;
 
   if (state === 'friend') {
-    return <Chip icon="account-check" label={m.player.isFriend} color={colors.accent} />;
+    return (
+      <>
+        <Chip icon="account-check" label={m.player.isFriend} color={colors.accent} />
+        {player.online ? (
+          <Button
+            label={m.challenge.fight}
+            icon="sword-cross"
+            variant="versus"
+            onPress={() =>
+              router.push({
+                pathname: '/challenge/[userId]',
+                params: { userId: player.userId, username: player.username },
+              })
+            }
+          />
+        ) : null}
+      </>
+    );
   }
   if (state === 'outgoing') {
     return <Chip icon="clock-outline" label={m.player.requestSent} color={colors.textMuted} />;
@@ -158,7 +175,9 @@ function Compare({ player, avatar }: { player: PlayerDetails; avatar: string | n
         {f(m.player.compareTitle, { username: player.username })}
       </AppText>
       <CompareRow
-        avatar={<Avatar image={myAvatar} name={session?.username ?? m.common.you} size={36} ringColor={colors.accent} />}
+        avatar={
+          <Avatar image={myAvatar} name={session?.username ?? m.common.you} size={36} ringColor={colors.accent} />
+        }
         label={m.common.you}
         level={n(mine.level.level)}
         value={mine.totalXp / maxXp}
@@ -218,7 +237,13 @@ function Movements({ player }: { player: PlayerDetails }) {
   return (
     <>
       {items.map((x) => (
-        <MovementCard key={x.exercise} exerciseId={x.exercise} totals={x.totals} history={x.history} ratings={player.ratings} />
+        <MovementCard
+          key={x.exercise}
+          exerciseId={x.exercise}
+          totals={x.totals}
+          history={x.history}
+          ratings={player.ratings}
+        />
       ))}
     </>
   );
@@ -328,7 +353,15 @@ function Stat({ label, value, unit, highlight }: { label: string; value: string;
   );
 }
 
-function Chip({ label, color, icon }: { label: string; color: string; icon?: React.ComponentProps<typeof Icon>['name'] }) {
+function Chip({
+  label,
+  color,
+  icon,
+}: {
+  label: string;
+  color: string;
+  icon?: React.ComponentProps<typeof Icon>['name'];
+}) {
   return (
     <View style={[styles.chip, { borderColor: color }]}>
       {icon ? <Icon name={icon} size="sm" color={color} /> : null}

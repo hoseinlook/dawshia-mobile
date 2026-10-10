@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
 
 import { NakamaSocket } from '../../services/remote/nakamaSocket';
@@ -9,9 +9,14 @@ const RETRY_MS = [2000, 5000, 15000, 30000];
 /**
  * Keeps a real-time socket open (with presence status) while the user is signed
  * in and the app is in the foreground, so friends see them as online.
+ * Server notifications (friend challenges) arrive on it and go to `onNotifications`.
  */
-export function usePresence(): void {
+export function usePresence(onNotifications?: (payload: unknown) => void): void {
   const { manager } = useAuth();
+  const onNotificationsRef = useRef(onNotifications);
+  useEffect(() => {
+    onNotificationsRef.current = onNotifications;
+  }, [onNotifications]);
 
   useEffect(() => {
     if (!manager) return;
@@ -28,6 +33,7 @@ export function usePresence(): void {
         if (stopped) return s.close();
         socket = s;
         retry = 0;
+        s.on('notifications', (payload) => onNotificationsRef.current?.(payload));
         s.on('disconnect', () => {
           socket = null;
           schedule();
@@ -38,10 +44,13 @@ export function usePresence(): void {
     };
     const schedule = () => {
       if (stopped || timer) return;
-      timer = setTimeout(() => {
-        timer = null;
-        connect();
-      }, RETRY_MS[Math.min(retry++, RETRY_MS.length - 1)]);
+      timer = setTimeout(
+        () => {
+          timer = null;
+          connect();
+        },
+        RETRY_MS[Math.min(retry++, RETRY_MS.length - 1)],
+      );
     };
     const disconnect = () => {
       if (timer) clearTimeout(timer);

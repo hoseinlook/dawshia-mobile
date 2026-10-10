@@ -121,6 +121,26 @@ export const en: Messages = {
     daysAgo: '{n} d ago',
     repsScore: '{count} reps',
   },
+  challenge: {
+    fight: 'Fight',
+    fightLabel: 'Challenge {username} to a 1v1',
+    title: 'Fight {username}',
+    subtitle: 'Pick a movement and a competition. {username} has 60 seconds to accept.',
+    movement: 'Movement',
+    competition: 'Competition',
+    send: 'Send fight request',
+    offline: '{username} is offline now.',
+    sendError: 'Could not send the fight request.',
+    waiting: 'Waiting for {username} to accept…',
+    joining: 'Joining {username}’s match…',
+    secondsLeft: '{seconds} s left',
+    incoming: '{username} challenges you to a fight!',
+    accept: 'Fight!',
+    decline: 'Not now',
+    declined: '{username} said no this time.',
+    noAnswer: '{username} didn’t answer.',
+    expired: 'This fight request has ended.',
+  },
   ranking: {
     title: 'Top players',
     subtitle: 'Ranked by level. Every valid rep earns XP.',
@@ -277,7 +297,8 @@ export const en: Messages = {
     },
     dip: {
       name: 'Deep Dip',
-      description: 'On parallel bars, lower from locked arms until your shoulder is below your elbow, then press back up.',
+      description:
+        'On parallel bars, lower from locked arms until your shoulder is below your elbow, then press back up.',
       instructions: [
         'Stand your phone upright beside the parallel bars so it sees you from the side.',
         'Step back 2–3 meters so your whole body and the bars are on screen.',

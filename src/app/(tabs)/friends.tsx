@@ -301,12 +301,32 @@ function FriendRow({ friend }: { friend: FriendInfo }) {
           onPress={run(() => remove(friend.userId))}
         />
       ) : (
-        <IconButton
-          icon="account-remove-outline"
-          label={m.friends.remove}
-          color={colors.textMuted}
-          onPress={confirmRemove}
-        />
+        <View style={styles.actions}>
+          {friend.online ? (
+            <Pressable
+              onPress={() =>
+                router.push({
+                  pathname: '/challenge/[userId]',
+                  params: { userId: friend.userId, username: friend.username },
+                })
+              }
+              accessibilityRole="button"
+              accessibilityLabel={f(m.challenge.fightLabel, { username: friend.username })}
+              style={({ pressed }) => [styles.fight, pressed && styles.fightPressed]}
+            >
+              <Icon name="sword-cross" size="sm" color={colors.background} />
+              <AppText variant="label" color={colors.background}>
+                {m.challenge.fight}
+              </AppText>
+            </Pressable>
+          ) : null}
+          <IconButton
+            icon="account-remove-outline"
+            label={m.friends.remove}
+            color={colors.textMuted}
+            onPress={confirmRemove}
+          />
+        </View>
       )}
     </View>
   );
@@ -446,6 +466,18 @@ const styles = StyleSheet.create({
     borderRadius: touchTarget / 2,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  fight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    minHeight: touchTarget,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    backgroundColor: colors.opponent,
+  },
+  fightPressed: {
+    opacity: 0.8,
   },
   iconButtonPressed: {
     backgroundColor: colors.surfaceRaised,

@@ -4,6 +4,7 @@ import { scoreValue } from '../../core/progress/progress';
 import { localDateString, type ExerciseTotals } from '../../core/stats/repTotals';
 import type {
   Avatar,
+  ChallengeMatch,
   FriendInfo,
   MatchHistoryRepository,
   PlayerDetails,
@@ -15,7 +16,7 @@ import type {
   SocialService,
 } from '../types';
 import type { SessionManager } from '../../features/auth/sessionManager';
-import { findOnlineMatch, type OnlineMatch } from './onlineMatch';
+import { findOnlineMatch, joinChallengeMatch, type OnlineMatch } from './onlineMatch';
 
 interface ServerProfile {
   username: string;
@@ -51,7 +52,12 @@ class RemoteProfileService implements ProfileService {
       const reason = e instanceof Error ? e.message : String(e);
       console.warn(`[dawshia] get_profile failed: ${reason}`);
       const local = await this.fallback.getProfile();
-      return { ...local, displayName: this.session.getSession().username, serverUnreachable: true, serverError: reason };
+      return {
+        ...local,
+        displayName: this.session.getSession().username,
+        serverUnreachable: true,
+        serverError: reason,
+      };
     }
   }
 }
@@ -122,6 +128,16 @@ function remoteSocial(session: SessionManager): SocialService {
       const r = await session.rpc<{ avatars: Record<string, Avatar> }>('get_avatars', { userIds });
       return r.avatars ?? {};
     },
+    async challengeFriend(userId, exerciseId, timeControlId) {
+      return session.rpc<ChallengeMatch>('challenge_friend', {
+        userId,
+        exercise: exerciseId,
+        timeControl: timeControlId,
+      });
+    },
+    async declineChallenge(invite) {
+      await session.rpc('decline_challenge', { matchId: invite.matchId, userId: invite.userId });
+    },
   };
 }
 
@@ -134,12 +150,8 @@ export function withRemote(local: Services, session: SessionManager): Services {
     matchmaking: {
       async findMatch(request, signal) {
         if (request.mode === 'practice') return local.matchmaking.findMatch(request, signal);
-        const { match, config } = await findOnlineMatch({
-          token: await session.getToken(),
-          selfUserId: session.getSession().userId,
-          request,
-          signal,
-        });
+        const params = { token: await session.getToken(), selfUserId: session.getSession().userId, request, signal };
+        const { match, config } = request.challenge ? await joinChallengeMatch(params) : await findOnlineMatch(params);
         if (signal?.aborted) {
           match.close(); // the screen was closed while the match was being set up
           throw new Error('Matchmaking cancelled');

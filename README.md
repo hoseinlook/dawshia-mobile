@@ -224,6 +224,26 @@ End-to-end test (friends, presence, last practice, VS profile, chat):
 npx tsx scripts/e2e/social.ts http://localhost:7350
 ```
 
+### Fight requests
+
+You can challenge an **online** friend to a friendly 1v1:
+1. Tap **Fight** next to an online friend (Friends tab), or on their player page.
+2. Pick the movement and competition, then send the request. A waiting screen counts down the 60 seconds your friend has to answer. You can cancel it.
+3. Your friend sees a card on top of the app: **Fight!** or **Not now**.
+   - **Fight!** puts both of you in the VS intro and the match.
+   - **Not now**, no answer, or a cancelled request each show a clear message.
+
+How it works:
+- The server checks that you are friends and that they are online. It then creates a **private** friendly match that only the two of you can join, and notifies your friend.
+- Notifications arrive on the presence socket (`features/social/ChallengesProvider.tsx`).
+- Both phones join the match with `joinChallengeMatch` (`services/remote/onlineMatch.ts`).
+- Friendly matches don't change ratings, but the reps count toward your stats and history.
+
+End-to-end test (who can be challenged, decline, accept, cancel):
+```sh
+npx tsx scripts/e2e/challenge.ts http://localhost:7350
+```
+
 **End-to-end test** against a running server (two simulated players, all three formats):
 ```sh
 npx tsx scripts/e2e/online-1v1.ts http://localhost:7350
@@ -333,7 +353,7 @@ Without these secrets the release still works, and the APK keeps the debug signa
 | Octalysis: loss avoidance (gentle) | daily streak with a "train today to keep it" nudge and no penalty |
 | Octalysis: unpredictability | random voice cheers, surprise achievement unlocks |
 | SDT: autonomy | choose your movement and competition type |
-| SDT: relatedness | 1v1 and ranked play, VS intro with both profiles, quick chat, friends with online status and last practice |
+| SDT: relatedness | 1v1 and ranked play, VS intro with both profiles, quick chat, friends with online status and last practice, fight requests to online friends |
 | Fogg: trigger + ability | "Play again" card on Home restarts your last competition in one tap |
 
 Tune the numbers in `src/core/progress/xp.ts` (XP and level curve) and `progress.ts` (daily goal, achievements).

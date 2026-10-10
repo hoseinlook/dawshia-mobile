@@ -10,7 +10,8 @@ import { primaryScore, remainingMs } from '../../core/match/matchReducer';
 import { isGame, isHold, type TimeControlId } from '../../core/match/timeControls';
 import type { MatchMode } from '../../core/match/types';
 import { personalBest } from '../../core/progress/progress';
-import { cueText, exerciseText } from '../../i18n/lookup';
+import { cueText, exerciseText, timeControlText } from '../../i18n/lookup';
+import { ChallengeError, type ChallengeMatch } from '../../services/types';
 import { useI18n } from '../../i18n/useI18n';
 import { AppText } from '../../ui/components/AppText';
 import { Button } from '../../ui/components/Button';
@@ -44,20 +45,27 @@ const CHAT_BUBBLE_MS = 3000;
 /** How long the online VS intro stays before the setup guide (tap to skip). */
 const VS_INTRO_MS = 4000;
 
+/** A friend challenge: you sent it (wait for the answer) or accepted it. */
+export interface SessionChallenge extends ChallengeMatch {
+  opponent: string;
+  role: 'sent' | 'received';
+}
+
 interface Props {
   exercise: ExerciseDefinition;
   timeControlId: TimeControlId;
   mode: MatchMode;
+  challenge?: SessionChallenge;
 }
 
-export function SessionScreen({ exercise, timeControlId, mode }: Props) {
+export function SessionScreen({ exercise, timeControlId, mode, challenge }: Props) {
   useKeepAwake();
   useScreenOrientation(exercise.camera.orientation);
   const { m, f, n, dir } = useI18n();
 
   const { hasPermission, requestPermission } = useCameraPermission();
   const device = useCameraDevice('front');
-  const session = useMatchSession({ exercise, timeControlId, mode });
+  const session = useMatchSession({ exercise, timeControlId, mode, challenge });
   const detection = usePoseDetection(session.onPose);
   const cheer = useCheers();
   const { settings } = useSettings();
@@ -189,6 +197,36 @@ export function SessionScreen({ exercise, timeControlId, mode }: Props) {
       </Centered>
     );
   }
+  // Friend challenge: waiting for the friend to accept (or joining their match).
+  if (!session.match && challenge && !session.error) {
+    return (
+      <Centered>
+        <Icon name="sword-cross" size="xl" color={colors.opponent} />
+        <AppText variant="heading" center>
+          {f(challenge.role === 'sent' ? m.challenge.waiting : m.challenge.joining, { username: challenge.opponent })}
+        </AppText>
+        <AppText variant="label" color={colors.textMuted} center>
+          {exerciseText(m, exercise.id).name} · {timeControlText(m, timeControlId).label}
+        </AppText>
+        {challenge.role === 'sent' ? <SecondsLeft until={challenge.expiresAt} /> : null}
+        <Button label={m.online.cancel} variant="ghost" onPress={() => router.back()} />
+      </Centered>
+    );
+  }
+  if (session.error instanceof ChallengeError) {
+    const text = { declined: m.challenge.declined, noAnswer: m.challenge.noAnswer, expired: m.challenge.expired }[
+      session.error.reason
+    ];
+    return (
+      <Centered>
+        <Icon name="account-clock-outline" size="xl" color={colors.textMuted} />
+        <AppText variant="heading" center>
+          {f(text, { username: challenge?.opponent ?? '' })}
+        </AppText>
+        <Button label={m.common.back} onPress={() => router.back()} />
+      </Centered>
+    );
+  }
   // Online: matchmaking until an opponent is found.
   if (!session.match && mode !== 'practice' && !session.error) {
     return (
@@ -208,7 +246,11 @@ export function SessionScreen({ exercise, timeControlId, mode }: Props) {
     return (
       <Centered>
         <AppText center>
-          {session.error ? (session.online || mode !== 'practice' ? m.online.connectionError : m.session.matchError) : m.session.detectorError}
+          {session.error
+            ? session.online || mode !== 'practice'
+              ? m.online.connectionError
+              : m.session.matchError
+            : m.session.detectorError}
         </AppText>
         <Button label={m.common.back} onPress={() => router.back()} />
       </Centered>
@@ -231,11 +273,8 @@ export function SessionScreen({ exercise, timeControlId, mode }: Props) {
       : null;
 
   const recent =
-    feedback.lastEvent && nowMs - feedback.lastEvent.timestampMs < EVENT_FLASH_MS
-      ? feedback.lastEvent
-      : null;
-  const cue =
-    recent?.type === 'repRejected' ? recent.reason : (feedback.cues[0] ?? null);
+    feedback.lastEvent && nowMs - feedback.lastEvent.timestampMs < EVENT_FLASH_MS ? feedback.lastEvent : null;
+  const cue = recent?.type === 'repRejected' ? recent.reason : (feedback.cues[0] ?? null);
 
   const you = match?.config.participants.find((p) => p.isLocal) ?? null;
   const bubble = (id: string | undefined) => {
@@ -249,12 +288,7 @@ export function SessionScreen({ exercise, timeControlId, mode }: Props) {
 
   return (
     <View style={[styles.root, dir]}>
-      <Camera
-        style={StyleSheet.absoluteFill}
-        device={device}
-        isActive
-        outputs={[detection.frameOutput]}
-      />
+      <Camera style={StyleSheet.absoluteFill} device={device} isActive outputs={[detection.frameOutput]} />
       <SkeletonOverlay pose={session.pose} color={feedback.inPosition ? colors.accent : colors.warning} />
       {game && match ? (
         <FlappyField
@@ -274,13 +308,7 @@ export function SessionScreen({ exercise, timeControlId, mode }: Props) {
       <SafeAreaView style={styles.hud} edges={['top', 'bottom', 'left', 'right']}>
         <View style={styles.topRow}>
           <View style={styles.youSlot}>
-            <ScoreBar
-              name={m.common.you}
-              reps={score}
-              scaleMax={scaleMax}
-              color={colors.accent}
-              target={best}
-            />
+            <ScoreBar name={m.common.you} reps={score} scaleMax={scaleMax} color={colors.accent} target={best} />
             {myBubble ? <ChatBubbleView code={myBubble} color={colors.accent} align="left" /> : null}
           </View>
           <MatchClock remainingMs={match ? remainingMs(match, nowMs) : 0} />
@@ -324,10 +352,10 @@ export function SessionScreen({ exercise, timeControlId, mode }: Props) {
                   : feedback.waitingForOpponent
                     ? m.online.waitingOpponent
                     : feedback.inPosition
-                    ? m.session.holdIt
-                    : feedback.cues[0]
-                      ? cueText(m, feedback.cues[0].code)
-                      : m.session.lookingForYou
+                      ? m.session.holdIt
+                      : feedback.cues[0]
+                        ? cueText(m, feedback.cues[0].code)
+                        : m.session.lookingForYou
               }
             />
           ) : countdownLeft !== null ? (
@@ -369,9 +397,7 @@ export function SessionScreen({ exercise, timeControlId, mode }: Props) {
         <View style={styles.bottomRow}>
           <Button label={m.session.quit} variant="ghost" onPress={confirmLeave} />
           <View style={styles.cueSlot}>
-            {status === 'live' && cue ? (
-              <CueBanner message={cueText(m, cue.code)} severity={cue.severity} />
-            ) : null}
+            {status === 'live' && cue ? <CueBanner message={cueText(m, cue.code)} severity={cue.severity} /> : null}
           </View>
           {session.online && opponent && status !== 'finished' ? (
             <QuickChat onSend={session.sendChat} />
@@ -488,3 +514,19 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
 });
+
+/** Seconds until the challenge expires, updated every second. */
+function SecondsLeft({ until }: { until: number }) {
+  const { m, f } = useI18n();
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const seconds = Math.max(0, Math.ceil((until - now) / 1000));
+  return (
+    <AppText variant="caption" color={colors.textMuted} center accessibilityLiveRegion="polite">
+      {f(m.challenge.secondsLeft, { seconds })}
+    </AppText>
+  );
+}

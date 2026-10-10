@@ -1,13 +1,6 @@
 import type { ExerciseId } from '../core/exercises/types';
 import type { TimeControlId } from '../core/match/timeControls';
-import type {
-  FinishReason,
-  MatchAction,
-  MatchConfig,
-  MatchMode,
-  MatchResult,
-  RatingChange,
-} from '../core/match/types';
+import type { FinishReason, MatchAction, MatchConfig, MatchMode, MatchResult, RatingChange } from '../core/match/types';
 import type { ExerciseTotals } from '../core/stats/repTotals';
 
 /**
@@ -32,6 +25,35 @@ export interface MatchRequest {
   exerciseId: ExerciseId;
   timeControlId: TimeControlId;
   player: PlayerProfile;
+  /** Friend challenge: join this private match instead of matchmaking. */
+  challenge?: ChallengeMatch;
+}
+
+/** A friend challenge's private match, as the challenger or the challenged friend. */
+export interface ChallengeMatch {
+  matchId: string;
+  /** After this (epoch ms) the challenge can no longer be accepted. */
+  expiresAt: number;
+}
+
+/** A friend challenged you to a 1v1 (arrives while the app is open). */
+export interface ChallengeInvite extends ChallengeMatch {
+  exerciseId: ExerciseId;
+  timeControlId: TimeControlId;
+  /** The challenger. */
+  userId: string;
+  username: string;
+}
+
+/** Why a friend challenge did not start. */
+export class ChallengeError extends Error {
+  constructor(
+    readonly reason: 'declined' | 'noAnswer' | 'expired',
+    message = `Challenge ${reason}`,
+  ) {
+    super(message);
+    this.name = 'ChallengeError';
+  }
 }
 
 export interface MatchmakingService {
@@ -168,6 +190,10 @@ export interface SocialService {
   /** Uploads (or with null removes) the caller's profile photo. */
   setAvatar(base64: string | null): Promise<void>;
   getAvatars(userIds: string[]): Promise<Record<string, Avatar>>;
+  /** Challenges an online friend to a 1v1 in a private match; join it with `MatchRequest.challenge`. */
+  challengeFriend(userId: string, exerciseId: ExerciseId, timeControlId: TimeControlId): Promise<ChallengeMatch>;
+  /** Tells the challenger you said no. */
+  declineChallenge(invite: ChallengeInvite): Promise<void>;
 }
 
 export interface Services {

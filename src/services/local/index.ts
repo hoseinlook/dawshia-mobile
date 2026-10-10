@@ -100,6 +100,10 @@ const offlineSocial: SocialService = {
   },
   setAvatar: async () => {},
   getAvatars: async () => ({}),
+  challengeFriend: async () => {
+    throw new Error('signInRequired');
+  },
+  declineChallenge: async () => {},
 };
 
 export function createLocalServices(): Services {
