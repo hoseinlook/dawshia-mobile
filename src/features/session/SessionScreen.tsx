@@ -1,7 +1,7 @@
 import { useKeepAwake } from 'expo-keep-awake';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, BackHandler, StyleSheet, View } from 'react-native';
+import { Alert, BackHandler, Linking, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 
@@ -183,10 +183,18 @@ export function SessionScreen({ exercise, timeControlId, mode, challenge }: Prop
   }, [online, opponentId]);
 
   if (!hasPermission) {
+    // If the system won't ask again (denied before), the button opens the app's settings.
+    const allowCamera = async () => {
+      if (!(await requestPermission())) Linking.openSettings().catch(() => {});
+    };
     return (
       <Centered>
         <AppText center>{m.session.cameraPermission}</AppText>
-        <Button label={m.session.allowCamera} onPress={requestPermission} />
+        <Button label={m.session.allowCamera} icon="camera" onPress={allowCamera} />
+        <AppText variant="caption" color={colors.textMuted} center>
+          {m.session.cameraSettingsHint}
+        </AppText>
+        <Button label={m.common.back} variant="ghost" onPress={() => router.back()} />
       </Centered>
     );
   }

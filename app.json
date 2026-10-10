@@ -57,7 +57,7 @@
         "expo-image-picker",
         {
           "photosPermission": "Dawshia uses your photos so you can choose a profile picture.",
-          "cameraPermission": false,
+          "cameraPermission": "Dawshia uses the camera to detect your movement and count your reps. Video never leaves your phone.",
           "microphonePermission": false
         }
       ]

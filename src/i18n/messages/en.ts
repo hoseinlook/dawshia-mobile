@@ -226,6 +226,7 @@ export const en: Messages = {
     stay: 'Stay',
     cameraPermission: 'Dawshia needs the camera to count your reps.',
     allowCamera: 'Allow camera',
+    cameraSettingsHint: 'If no permission prompt appears, the button opens the app settings: turn on Camera there.',
     noCamera: 'No camera found.',
     matchError: 'Could not start the match. Please try again.',
     detectorError: 'Could not load the body-tracking model.',
