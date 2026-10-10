@@ -75,14 +75,6 @@ export function pipesPassed(elapsedMs: number): number {
   return Math.max(0, n);
 }
 
-/** Bird height from the elbow angle: arms locked (top of the push-up) = high, bottom = low. */
-export function birdYFromElbow(elbowAngle: number): number {
-  const top = 170;
-  const bottom = 80;
-  const t = (top - elbowAngle) / (top - bottom); // 0 at the top, 1 at the bottom
-  return 0.12 + Math.max(0, Math.min(1, t)) * 0.76;
-}
-
 /** Whether the bird at height `birdY` hits a pipe at this moment. */
 export function collides(seed: number, elapsedMs: number, birdY: number): boolean {
   for (const pipe of visiblePipes(seed, elapsedMs)) {

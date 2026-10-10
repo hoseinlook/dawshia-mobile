@@ -359,3 +359,63 @@ export function frontLeverPose({ drop = 0, pike = 0, elbowAngle = 175, timestamp
     timestampMs,
   );
 }
+
+export interface FrontPushupOptions {
+  /** 0 = arms straight (top) … 1 = chest at the floor. */
+  depth: number;
+  /** Standing up facing the phone instead of a plank. */
+  standing?: boolean;
+  /** Distance scale: 1 = about 1 m from the phone; larger = closer. */
+  scale?: number;
+  timestampMs?: number;
+}
+
+const FRONT_FRAME_W = 720;
+const FRONT_FRAME_H = 1280;
+
+/**
+ * Face-to-face push-up in a portrait frame (phone on the floor in front of the
+ * head): hands on the floor, shoulders above them; lowering brings the
+ * shoulders down toward the hands. Hips are hidden behind the shoulders.
+ */
+export function frontPushupPose({ depth, standing = false, scale = 1, timestampMs = 0 }: FrontPushupOptions): Pose {
+  const cx = FRONT_FRAME_W / 2;
+  const half = 90 * scale; // half shoulder width
+  const wristY = 1000;
+  const arm = 260 * scale; // shoulder height above the hands with straight arms
+  const px: Partial<Record<(typeof KEYPOINT_NAMES)[number], [number, number]>> = {};
+  const hidden = new Set<string>();
+
+  if (standing) {
+    const shoulderY = 400;
+    for (const [side, dir] of [['left', -1], ['right', 1]] as const) {
+      px[`${side}Shoulder`] = [cx + dir * half, shoulderY];
+      px[`${side}Elbow`] = [cx + dir * (half + 10), shoulderY + 150 * scale];
+      px[`${side}Wrist`] = [cx + dir * (half + 15), shoulderY + 280 * scale];
+      px[`${side}Hip`] = [cx + dir * half * 0.7, shoulderY + 300 * scale];
+      px[`${side}Knee`] = [cx + dir * half * 0.7, shoulderY + 520 * scale];
+      px[`${side}Ankle`] = [cx + dir * half * 0.7, shoulderY + 720 * scale];
+    }
+  } else {
+    const shoulderY = wristY - arm * (1 - 0.8 * depth);
+    for (const [side, dir] of [['left', -1], ['right', 1]] as const) {
+      px[`${side}Shoulder`] = [cx + dir * half, shoulderY];
+      px[`${side}Elbow`] = [cx + dir * (half + 60 * scale * depth + 10), (shoulderY + wristY) / 2];
+      px[`${side}Wrist`] = [cx + dir * (half + 20), wristY];
+      hidden.add(`${side}Hip`).add(`${side}Knee`).add(`${side}Ankle`);
+    }
+  }
+  const shoulderY = px.leftShoulder![1];
+  px.nose = [cx, shoulderY - 80 * scale];
+  px.leftEye = [cx - 25 * scale, shoulderY - 95 * scale];
+  px.rightEye = [cx + 25 * scale, shoulderY - 95 * scale];
+  px.leftEar = [cx - 55 * scale, shoulderY - 85 * scale];
+  px.rightEar = [cx + 55 * scale, shoulderY - 85 * scale];
+
+  const keypoints = {} as Keypoints;
+  for (const name of KEYPOINT_NAMES) {
+    const [x, y] = px[name] ?? [0, 0];
+    keypoints[name] = { x: x / FRONT_FRAME_W, y: y / FRONT_FRAME_H, score: hidden.has(name) ? 0.05 : 0.9 };
+  }
+  return { keypoints, frameWidth: FRONT_FRAME_W, frameHeight: FRONT_FRAME_H, timestampMs };
+}

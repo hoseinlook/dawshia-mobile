@@ -1,4 +1,4 @@
-import { birdYFromElbow, collides, FLAPPY, FlappyGame, pipeAt, pipesPassed, seededRandom, visiblePipes } from './flappy';
+import { collides, FLAPPY, FlappyGame, pipeAt, pipesPassed, seededRandom, visiblePipes } from './flappy';
 
 describe('flappy course', () => {
   it('is deterministic per seed (same course for both 1v1 players)', () => {
@@ -30,12 +30,6 @@ describe('flappy course', () => {
       expect(p).toBeGreaterThanOrEqual(last);
       last = p;
     }
-  });
-
-  it('maps push-up height to bird height', () => {
-    expect(birdYFromElbow(175)).toBeCloseTo(0.12);
-    expect(birdYFromElbow(80)).toBeCloseTo(0.88);
-    expect(birdYFromElbow(125)).toBeCloseTo(0.5);
   });
 });
 

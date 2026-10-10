@@ -269,9 +269,9 @@ export const en: Messages = {
       name: 'Flappy Push',
       description: 'Hold a push-up plank and steer the bird through the pipes with your height!',
       instructions: [
-        'Turn your phone sideways and place it on the floor so it sees you from the side.',
-        'Step back about 2 meters so your whole body is on screen.',
-        'Stay in a push-up plank: arms straight = bird up, lowering = bird down.',
+        'Stand your phone upright on the floor, facing you, about 1 meter in front of your hands.',
+        'Get into a push-up plank facing the phone: your head, shoulders and both hands must be on screen.',
+        'Arms straight = bird up, lowering your chest = bird down.',
         'Fly through the gaps; hitting a pipe or leaving the plank ends the game.',
       ],
     },

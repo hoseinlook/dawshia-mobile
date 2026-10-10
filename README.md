@@ -7,7 +7,7 @@ A competitive bodyweight-training app: the phone camera watches you, counts ever
 **Current scope:** offline practice mode with:
 - **Most reps in a time control:** push-ups, pull-ups, deep parallel-bar dips, muscle-ups and handstand push-ups.
 - **Resistance (longest hold wins):** handstand, L-sit and front lever.
-- **Game:** **Flappy Push**. Hold a push-up plank and steer a bird through pipes with your height; most pipes passed wins.
+- **Game:** **Flappy Push**. Hold a push-up plank **face to face** with the phone (upright on the floor in front of you) and steer a bird through pipes with your height; most pipes passed wins. The bird follows how high your shoulders are above your hands, calibrated to your straight-arm position and shoulder width, so it works at any distance (`core/exercises/flappy/flappyAnalyzer.ts`).
 
 Every movement can be played as **practice** (offline) or **Ranked 1v1** (online, signed in). The code is structured so that more exercises and online 1v1 (through `dawshia-server`) can be added without restructuring.
 
