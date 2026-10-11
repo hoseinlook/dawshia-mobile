@@ -1,5 +1,5 @@
 /**
- * End-to-end check of chat between players after a 1v1, against a running
+ * End-to-end check of chat between players during and after a 1v1, against a running
  * Dawshia server, using the app's own client code.
  *
  *   npx tsx scripts/e2e/chat.ts [http://localhost:7350]
@@ -57,6 +57,17 @@ async function main() {
     findOnlineMatch({ token: a.token, selfUserId: a.userId, request: request('a'), baseUrl: BASE }),
     findOnlineMatch({ token: b.token, selfUserId: b.userId, request: request('b'), baseUrl: BASE }),
   ]);
+
+  console.log('chat during the match');
+  const liveA = await open(a, b);
+  const liveB = await open(b, a);
+  const duringB = new Promise<ChatMessage>((resolve) => liveB.subscribe(resolve));
+  await liveA.send('good luck, see you at the top!');
+  const during = await Promise.race([duringB, sleep(5000).then(() => null)]);
+  check(during?.text === 'good luck, see you at the top!', 'B gets A’s typed message while the match is running');
+  liveA.close();
+  liveB.close();
+
   const finished = new Promise((resolve) => mb.match.subscribeResult(resolve));
   ma.match.ready();
   mb.match.ready();
@@ -99,8 +110,8 @@ async function main() {
   chatB.close();
 
   const again = await open(a, b);
-  check(again.history.length === 2, 'history is kept');
-  check(again.history[0].text === 'سلام! باشه 💪' && again.history[1].text === 'gg! rematch?', 'newest first, Persian and emoji intact');
+  check(again.history.length === 3, 'history is kept (including the in-match message)');
+  check(again.history[0].text === 'سلام! باشه 💪' && again.history[1].text === 'gg! rematch?' && again.history[2].text === 'good luck, see you at the top!', 'newest first, Persian and emoji intact');
   again.close();
   bPresence.close();
 

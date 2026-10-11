@@ -28,7 +28,8 @@ import { useHistory } from '../progress/useHistory';
 import { CueBanner } from './components/CueBanner';
 import { FlappyField } from './components/FlappyField';
 import { MatchClock } from './components/MatchClock';
-import { ChatBubbleView, QuickChat } from './components/QuickChat';
+import { ChatBubbleView, ChatComposer, QuickChat } from './components/QuickChat';
+import { useChat } from '../chat/ChatProvider';
 import { ScoreBar } from './components/ScoreBar';
 import { SetupGuide } from './components/SetupGuide';
 import { VsIntro } from './components/VsIntro';
@@ -42,6 +43,8 @@ const RECORD_FLASH_MS = 2500;
 const MIN_COMBO = 3;
 /** How long a quick-chat bubble stays on screen. */
 const CHAT_BUBBLE_MS = 3000;
+/** Longest time a typed message bubble stays on screen. */
+const CHAT_TEXT_MAX_MS = 8000;
 /** How long the online VS intro stays before the setup guide (tap to skip). */
 const VS_INTRO_MS = 4000;
 
@@ -168,6 +171,16 @@ export function SessionScreen({ exercise, timeControlId, mode, challenge }: Prop
     return () => sub.remove();
   }, [confirmLeave]);
 
+  // Typed chat during the match: the message bar, and no unread badge for what you see here.
+  const [composing, setComposing] = useState(false);
+  const { setActive: setActiveChat } = useChat();
+  const chatOpponentId = session.opponentId;
+  useEffect(() => {
+    if (!chatOpponentId) return;
+    setActiveChat(chatOpponentId);
+    return () => setActiveChat(null);
+  }, [chatOpponentId, setActiveChat]);
+
   // Online: VS intro when the opponent is found.
   const [introDismissedAt, setIntroDismissedAt] = useState<number | null>(null);
   const [introStartedAt, setIntroStartedAt] = useState<number | null>(null);
@@ -287,7 +300,11 @@ export function SessionScreen({ exercise, timeControlId, mode, challenge }: Prop
   const you = match?.config.participants.find((p) => p.isLocal) ?? null;
   const bubble = (id: string | undefined) => {
     const b = id ? session.chat[id] : undefined;
-    return b && nowMs - b.atMs < CHAT_BUBBLE_MS ? b.code : null;
+    if (!b) return null;
+    // Typed messages stay longer, depending on their length.
+    const showMs = b.text ? Math.min(CHAT_TEXT_MAX_MS, CHAT_BUBBLE_MS + b.text.length * 60) : CHAT_BUBBLE_MS;
+    if (nowMs - b.atMs >= showMs) return null;
+    return b.text ?? (b.code ? m.chat[b.code] : null);
   };
   const myBubble = bubble(you?.id);
   const opponentBubble = bubble(opponent?.id);
@@ -317,7 +334,7 @@ export function SessionScreen({ exercise, timeControlId, mode, challenge }: Prop
         <View style={styles.topRow}>
           <View style={styles.youSlot}>
             <ScoreBar name={m.common.you} reps={score} scaleMax={scaleMax} color={colors.accent} target={best} />
-            {myBubble ? <ChatBubbleView code={myBubble} color={colors.accent} align="left" /> : null}
+            {myBubble ? <ChatBubbleView text={myBubble} color={colors.accent} align="left" /> : null}
           </View>
           <MatchClock remainingMs={match ? remainingMs(match, nowMs) : 0} />
           {/* Opponent slot: their live score bar in 1v1, mirrored on the other side. */}
@@ -343,7 +360,7 @@ export function SessionScreen({ exercise, timeControlId, mode, challenge }: Prop
                 </AppText>
               </View>
             ) : null}
-            {opponentBubble ? <ChatBubbleView code={opponentBubble} color={colors.opponent} align="right" /> : null}
+            {opponentBubble ? <ChatBubbleView text={opponentBubble} color={colors.opponent} align="right" /> : null}
           </View>
         </View>
 
@@ -408,7 +425,7 @@ export function SessionScreen({ exercise, timeControlId, mode, challenge }: Prop
             {status === 'live' && cue ? <CueBanner message={cueText(m, cue.code)} severity={cue.severity} /> : null}
           </View>
           {session.online && opponent && status !== 'finished' ? (
-            <QuickChat onSend={session.sendChat} />
+            <QuickChat onSend={session.sendChat} onWrite={session.textChat ? () => setComposing(true) : undefined} />
           ) : (
             <AppText variant="caption" color={colors.textMuted} style={styles.debug}>
               {feedback.metrics.elbowAngle !== undefined
@@ -418,6 +435,9 @@ export function SessionScreen({ exercise, timeControlId, mode, challenge }: Prop
           )}
         </View>
       </SafeAreaView>
+      {composing && session.textChat && status !== 'finished' ? (
+        <ChatComposer onSend={session.sendText} onClose={() => setComposing(false)} />
+      ) : null}
       {showIntro ? (
         <VsIntro
           you={you}

@@ -213,6 +213,7 @@ export const fa = {
     acceptRequest: 'پذیرفتن درخواست',
   },
   chat: {
+    write: 'نوشتن پیام…',
     open: 'پیام سریع',
     close: 'بستن',
     goodLuck: 'موفق باشی!',

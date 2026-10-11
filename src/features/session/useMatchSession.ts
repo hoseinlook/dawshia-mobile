@@ -7,7 +7,7 @@ import { isGame, isHold, type TimeControlId } from '../../core/match/timeControl
 import type { MatchAction, MatchConfig, MatchMode, MatchResult, MatchState } from '../../core/match/types';
 import type { Pose } from '../../core/pose/types';
 import { useServices } from '../../services/ServicesProvider';
-import type { ChallengeMatch, MatchTransport, ServerResult } from '../../services/types';
+import type { ChallengeMatch, ChatConversation, MatchTransport, ServerResult } from '../../services/types';
 
 /** How long the athlete must hold the start position before the countdown begins. */
 const READY_HOLD_MS = 1500;
@@ -25,8 +25,10 @@ const CHAT_COOLDOWN_MS = 1500;
 export const CHAT_CODES = ['goodLuck', 'letsGo', 'niceOne', 'wow', 'tooEasy', 'almostThere', 'ouch', 'gg'] as const;
 export type ChatCode = (typeof CHAT_CODES)[number];
 
+/** The latest chat line of one player: a preset phrase or a typed message. */
 export interface ChatBubble {
-  code: ChatCode;
+  code?: ChatCode;
+  text?: string;
   atMs: number;
 }
 
@@ -320,6 +322,49 @@ export function useMatchSession({ exercise, timeControlId, mode, challenge }: Op
 
   const abort = useCallback(() => act({ type: 'abort', nowMs: Date.now() }), [act]);
 
+  // Typed chat with the opponent (Nakama direct messages, kept after the match too).
+  const opponentId = matchConfig?.online ? matchConfig.participants.find((p) => !p.isLocal)?.id : undefined;
+  const conversationRef = useRef<ChatConversation | null>(null);
+  const [textChat, setTextChat] = useState(false);
+  useEffect(() => {
+    if (!opponentId) return;
+    let cancelled = false;
+    let unsubscribe = () => {};
+    services.social
+      .openChat(opponentId)
+      .then((c) => {
+        if (cancelled) return c.close();
+        conversationRef.current = c;
+        setTextChat(true);
+        // Our own messages come back once the server accepted them.
+        unsubscribe = c.subscribe((msg) =>
+          setChat((prev) => ({ ...prev, [msg.senderId]: { text: msg.text, atMs: Date.now() } })),
+        );
+      })
+      .catch((e: unknown) => {
+        // Quick chat still works without it.
+        console.warn(`[dawshia] match chat unavailable: ${e instanceof Error ? e.message : e}`);
+      });
+    return () => {
+      cancelled = true;
+      unsubscribe();
+      conversationRef.current?.close();
+      conversationRef.current = null;
+      setTextChat(false);
+    };
+  }, [services, opponentId]);
+
+  /** Sends a typed message to the opponent. Resolves false if it was not sent. */
+  const sendText = useCallback(async (text: string): Promise<boolean> => {
+    if (!conversationRef.current || !text.trim()) return false;
+    try {
+      await conversationRef.current.send(text);
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
   /** Sends a quick-chat phrase to the opponent. Returns false while on cooldown. */
   const sendChat = useCallback(
     (code: ChatCode): boolean => {
@@ -348,5 +393,9 @@ export function useMatchSession({ exercise, timeControlId, mode, challenge }: Op
     opponentBirds,
     chat,
     sendChat,
+    /** Typed messages are available (the chat channel is open). */
+    textChat,
+    sendText,
+    opponentId,
   };
 }

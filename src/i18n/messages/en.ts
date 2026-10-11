@@ -209,6 +209,7 @@ export const en: Messages = {
     acceptRequest: 'Accept request',
   },
   chat: {
+    write: 'Write…',
     open: 'Quick chat',
     close: 'Close',
     goodLuck: 'Good luck!',
