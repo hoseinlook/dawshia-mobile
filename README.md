@@ -123,7 +123,15 @@ Persian (`fa`, right-to-left) is the default; English (`en`) can be picked in **
 - **Login:** on launch the app shows a sign-in / sign-up screen (email + password, via Nakama's email auth).
   - The session is saved on the phone and refreshed automatically, so you stay signed in for 30 days of inactivity.
   - **Continue offline** skips the account. Practice still works, and stats stay on the phone.
-- **Server address:** hard-coded in `src/services/remote/config.ts` (`SERVER_URL`, currently `http://192.168.1.105:7350`). TODO: make it configurable per build and use HTTPS for release builds.
+- **Server address:** `src/services/remote/config.ts` defaults to the production server (`http://94.184.32.14:7350`).
+  - To use a local server, create `.env.local`:
+    ```sh
+    EXPO_PUBLIC_SERVER_URL=http://192.168.1.105:7350
+    EXPO_PUBLIC_NAKAMA_SERVER_KEY=dawshia-local-server-key
+    ```
+    Then restart Metro with `--clear`.
+  - Prefix the e2e commands with the same variables when running them against localhost.
+  - TODO: HTTPS once the server has a domain.
 - **Navigation:** a bottom tab bar with **Home**, **Ranking**, **Friends**, **Profile** and **Settings**. Competitions, sessions and results open above it.
 - **Profile** (👤 tab): each movement's valid reps **today**, **this month** and **in total**.
   - Signed in, it reads from the server, and every finished practice session is sent there.
@@ -244,9 +252,11 @@ End-to-end test (who can be challenged, decline, accept, cancel):
 npx tsx scripts/e2e/challenge.ts http://localhost:7350
 ```
 
-### Messages after a 1v1
+### Messages during and after a 1v1
 
-After a 1v1, ranked or friendly, the two players can message each other:
+As soon as two players are matched (ranked or friendly), they can message each other:
+- **During the match:** the chat button offers **Write…** above the preset phrases. A message bar opens at the top of the screen, where the keyboard doesn't cover it. Typed messages appear as speech bubbles, like the presets, and stay up a little longer depending on their length.
+- **After the match:** all of these messages, including the ones from the match, are in the chat history.
 - **Where to start a chat:**
   - **Results:** a **Message {opponent}** button
   - **Player page:** a **Message** button when you have played them
@@ -261,10 +271,10 @@ After a 1v1, ranked or friendly, the two players can message each other:
 
 How it works:
 - It uses Nakama **direct-message channels** (`services/remote/chat.ts`). Each open chat has its own socket, and history comes from `GET /v2/channel/{id}`.
-- The server only lets two players open a channel if they have finished a 1v1 together. It checks every message and sends the other player a notification (code 102) on their presence socket (`features/chat/ChatProvider.tsx`).
+- The server only lets two players open a channel if they have been matched in a 1v1. That's recorded when both join the match. It checks every message and sends the other player a notification (code 102) on their presence socket (`features/chat/ChatProvider.tsx`).
 - Unread counts live in memory. They count messages that arrive while the app is open and reset when you open that chat.
 
-End-to-end test (chat after a 1v1, strangers blocked, live delivery, notification, limits, history):
+End-to-end test (chat during and after a 1v1, strangers blocked, live delivery, notification, limits, history):
 ```sh
 npx tsx scripts/e2e/chat.ts http://localhost:7350
 ```
@@ -353,7 +363,7 @@ Without these secrets the release still works, and the APK keeps the debug signa
 
 **Never commit the keystore.** `*.jks`, `*.keystore` and `*.p12` files are git-ignored.
 
-> The server address is hard-coded (`src/services/remote/config.ts`). APKs built on GitHub point at `192.168.1.105`, which only works on your home network until a public server exists.
+> APKs point at the production server (`http://94.184.32.14:7350`) unless `EXPO_PUBLIC_SERVER_URL` is set at build time; see `src/services/remote/config.ts`.
 
 ## Design and gamification
 

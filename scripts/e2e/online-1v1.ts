@@ -9,9 +9,10 @@
 import type { MatchAction } from '../../src/core/match/types';
 import { findOnlineMatch, type OnlineMatch } from '../../src/services/remote/onlineMatch';
 import type { LiveEvent, ServerResult } from '../../src/services/types';
+import { NAKAMA_SERVER_KEY } from '../../src/services/remote/config';
 
 const BASE = process.argv[2] ?? 'http://localhost:7350';
-const SERVER_KEY = 'dawshia-local-server-key';
+const SERVER_KEY = NAKAMA_SERVER_KEY;
 
 async function signUp(name: string): Promise<{ token: string; userId: string }> {
   const res = await fetch(`${BASE}/v2/account/authenticate/email?create=true&username=${name}`, {
