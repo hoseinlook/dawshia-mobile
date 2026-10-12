@@ -60,6 +60,13 @@
           "cameraPermission": "Dawshia uses the camera to detect your movement and count your reps. Video never leaves your phone.",
           "microphonePermission": false
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/android-icon-monochrome.png",
+          "color": "#3DDC97"
+        }
       ]
     ],
     "experiments": {

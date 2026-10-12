@@ -1,8 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../../features/auth/AuthProvider';
+import {
+  getNotifyPermission,
+  requestNotifyPermission,
+  type NotifyPermission,
+} from '../../features/notices/systemNotifications';
 import { useSettings } from '../../features/settings/SettingsProvider';
 import { format } from '../../i18n/format';
 import { LOCALES, type Locale } from '../../i18n/locales';
@@ -55,10 +60,52 @@ export default function SettingsScreen() {
           />
         </View>
 
+        <NotificationsSection />
         <AccountSection />
         <ServerSection />
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+/** Phone/browser notifications: the setting plus the system permission behind it. */
+function NotificationsSection() {
+  const { m, textStart } = useI18n();
+  const { settings, updateSettings } = useSettings();
+  const [permission, setPermission] = useState<NotifyPermission | null>(null);
+  useEffect(() => {
+    getNotifyPermission()
+      .then(setPermission)
+      .catch(() => setPermission('denied'));
+  }, []);
+
+  const on = settings.notificationsEnabled && permission === 'granted';
+  const toggle = async (next: boolean) => {
+    if (!next) {
+      updateSettings({ notificationsEnabled: false });
+      return;
+    }
+    const granted = permission === 'granted' ? permission : await requestNotifyPermission().catch(() => 'denied' as const);
+    setPermission(granted);
+    updateSettings({ notificationsEnabled: granted === 'granted' });
+  };
+
+  return (
+    <>
+      <AppText style={[styles.section, textStart]}>{m.notices.setting}</AppText>
+      <View style={styles.row}>
+        <AppText style={[styles.hint, textStart]}>
+          {permission === 'denied' ? m.notices.blocked : m.notices.settingHint}
+        </AppText>
+        <Switch
+          value={on}
+          onValueChange={toggle}
+          disabled={permission === null}
+          trackColor={{ true: colors.accent, false: colors.border }}
+          accessibilityLabel={m.notices.setting}
+        />
+      </View>
+    </>
   );
 }
 

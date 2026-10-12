@@ -7,6 +7,7 @@ import { View } from 'react-native';
 import { AuthProvider, useAuth } from '../features/auth/AuthProvider';
 import { preloadPoseEngine } from '../features/pose/poseEngine';
 import { ChatProvider } from '../features/chat/ChatProvider';
+import { NoticeCenter } from '../features/notices/NoticeCenter';
 import { ChallengesProvider } from '../features/social/ChallengesProvider';
 import { FriendsProvider } from '../features/social/FriendsProvider';
 import { NotificationsProvider } from '../features/social/NotificationsProvider';
@@ -72,6 +73,7 @@ function AppStack() {
               <Stack.Screen name="login" />
             </Stack.Protected>
           </Stack>
+          {inApp ? <NoticeCenter /> : null}
         </ChatProvider>
       </ChallengesProvider>
     </NotificationsProvider>

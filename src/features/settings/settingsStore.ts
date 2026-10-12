@@ -8,12 +8,15 @@ export interface Settings {
   soundEnabled: boolean;
   /** Match music and sound effects (countdown, horn, final-seconds music, buzzer, fanfare). */
   musicEnabled: boolean;
+  /** Phone/browser notifications for friend requests, fights and messages while the app is in the background. */
+  notificationsEnabled: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   locale: DEFAULT_LOCALE,
   soundEnabled: true,
   musicEnabled: true,
+  notificationsEnabled: true,
 };
 
 const FILE_NAME = 'settings.json';
@@ -33,6 +36,10 @@ export function loadSettings(): Settings {
       typeof raw.soundEnabled === 'boolean' ? raw.soundEnabled : DEFAULT_SETTINGS.soundEnabled,
     musicEnabled:
       typeof raw.musicEnabled === 'boolean' ? raw.musicEnabled : DEFAULT_SETTINGS.musicEnabled,
+    notificationsEnabled:
+      typeof raw.notificationsEnabled === 'boolean'
+        ? raw.notificationsEnabled
+        : DEFAULT_SETTINGS.notificationsEnabled,
   };
 }
 

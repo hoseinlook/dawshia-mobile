@@ -240,11 +240,32 @@ The **Friends** tab (signed in only):
   - **last practice** (movement, score, how long ago)
 - The list refreshes every 30 s and on pull-down.
 
-Online status comes from a presence socket that is open while the app is in the foreground (`features/social/usePresence.ts`). Your total XP is published from Home when it changes (`usePublishProfile`); the server derives level and rank from it.
+Online status comes from a presence socket that is open while the app is in the foreground (`features/social/usePresence.ts`). In the background it reconnects without online status for 10 minutes (browser tabs keep it), so notifications still arrive. Your total XP is published from Home when it changes (`usePublishProfile`); the server derives level and rank from it.
 
 End-to-end test (friends, presence, last practice, VS profile, chat):
 ```sh
 npx tsx scripts/e2e/social.ts http://localhost:7350
+```
+
+### Notifications
+
+[`features/notices`](src/features/notices) tells you about social events:
+
+| Event | In the app | App in the background |
+|---|---|---|
+| Friend request | banner at the top, tap → Friends; badge updates at once | phone notification → Friends |
+| Request accepted | banner, tap → their player page | phone notification → their page |
+| Fight request | fight card over the tabs | phone notification → the card |
+| Chat message | preview above the tab bar | phone notification → the chat |
+
+- Banners never cover a match.
+- Friend events are Nakama's own notifications (codes −2 and −3, sent by `add_friend`); fights and chat are ours (100, 102).
+- Phone notifications are **local**: the app raises them from the background socket (`expo-notifications`, Android channel "Friends & fights"), so no FCM or APNs is needed. They work for about 10 minutes after the app leaves the screen. Real push when the app is closed would need FCM, which is unreliable in Iran.
+- On the web they're browser notifications while the tab is hidden; the browser asks when you turn on **Settings → Notifications**.
+- On a phone, Dawshia asks for permission once after sign-in (Android 13+). The **Settings → Notifications** switch turns them off, and it says when the system has blocked them.
+
+```sh
+npx tsx scripts/e2e/notifications.ts https://dawshia.ir   # friend request + accepted, as the app parses them
 ```
 
 ### Fight requests

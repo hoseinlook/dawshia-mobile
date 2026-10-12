@@ -236,6 +236,16 @@ export const en: Messages = {
     level: 'Level {level}',
     rating: 'Rating {rating}',
   },
+  notices: {
+    dismiss: 'Dismiss',
+    friendRequest: '{username} wants to be your friend',
+    friendRequestText: 'Open Friends to accept.',
+    friendAccepted: '{username} accepted your friend request',
+    friendAcceptedText: 'You can challenge them to a 1v1 now.',
+    setting: 'Notifications',
+    settingHint: 'Friend requests, fight requests and messages while Dawshia is not open.',
+    blocked: 'Notifications are blocked. Allow them for Dawshia in your phone or browser settings.',
+  },
   settings: {
     music: 'Match music & effects',
     musicHint: 'Countdown, start horn, intense music in the final seconds and the final buzzer.',
