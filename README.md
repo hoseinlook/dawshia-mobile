@@ -123,7 +123,7 @@ Persian (`fa`, right-to-left) is the default; English (`en`) can be picked in **
 - **Login:** on launch the app shows a sign-in / sign-up screen (email + password, via Nakama's email auth).
   - The session is saved on the phone and refreshed automatically, so you stay signed in for 30 days of inactivity.
   - **Continue offline** skips the account. Practice still works, and stats stay on the phone.
-- **Server address:** `src/services/remote/config.ts` defaults to the production server (`http://94.184.32.14:7350`).
+- **Server address:** `src/services/remote/config.ts` defaults to the production server (`https://dawshia.ir`; nginx in front of Nakama, the socket uses `wss://`).
   - To use a local server, create `.env.local`:
     ```sh
     EXPO_PUBLIC_SERVER_URL=http://192.168.1.105:7350
@@ -131,7 +131,7 @@ Persian (`fa`, right-to-left) is the default; English (`en`) can be picked in **
     ```
     Then restart Metro with `--clear`.
   - Prefix the e2e commands with the same variables when running them against localhost.
-  - TODO: HTTPS once the server has a domain.
+  - Cleartext HTTP stays allowed on Android (`usesCleartextTraffic`) only so local development servers work.
 - **Navigation:** a bottom tab bar with **Home**, **Ranking**, **Friends**, **Profile** and **Settings**. Competitions, sessions and results open above it.
 - **Profile** (👤 tab): each movement's valid reps **today**, **this month** and **in total**.
   - Signed in, it reads from the server, and every finished practice session is sent there.
@@ -370,7 +370,7 @@ Without these secrets the release still works, and the APK keeps the debug signa
 
 **Never commit the keystore.** `*.jks`, `*.keystore` and `*.p12` files are git-ignored.
 
-> APKs point at the production server (`http://94.184.32.14:7350`) unless `EXPO_PUBLIC_SERVER_URL` is set at build time; see `src/services/remote/config.ts`.
+> APKs point at the production server (`https://dawshia.ir`) unless `EXPO_PUBLIC_SERVER_URL` is set at build time; see `src/services/remote/config.ts`.
 
 ## Design and gamification
 
