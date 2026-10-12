@@ -1,6 +1,5 @@
-import { File, Paths } from 'expo-file-system';
-
 import { DEFAULT_LOCALE, isLocale, type Locale } from '../../i18n/locales';
+import { readText, writeText } from '../../services/local/textStore';
 
 /** Device-local user preferences (not synced to the server). */
 export interface Settings {
@@ -19,16 +18,12 @@ export const DEFAULT_SETTINGS: Settings = {
 
 const FILE_NAME = 'settings.json';
 
-function settingsFile(): File {
-  return new File(Paths.document, FILE_NAME);
-}
-
 /** Reads saved settings synchronously so the first render already uses them. */
 export function loadSettings(): Settings {
   let raw: Partial<Settings> = {};
   try {
-    const file = settingsFile();
-    if (file.exists) raw = JSON.parse(file.textSync()) as Partial<Settings>;
+    const text = readText(FILE_NAME);
+    if (text) raw = JSON.parse(text) as Partial<Settings>;
   } catch {
     // Corrupt file: start from defaults.
   }
@@ -43,7 +38,7 @@ export function loadSettings(): Settings {
 
 export function saveSettings(settings: Settings): void {
   try {
-    settingsFile().write(JSON.stringify(settings));
+    writeText(FILE_NAME, JSON.stringify(settings));
   } catch {
     // Not critical: the app keeps working with in-memory settings.
   }

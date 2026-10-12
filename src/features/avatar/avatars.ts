@@ -1,6 +1,6 @@
-import { File, Paths } from 'expo-file-system';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 
+import { deleteText, readText, writeText } from '../../services/local/textStore';
 import type { SocialService } from '../../services/types';
 
 /**
@@ -27,8 +27,7 @@ const myListeners = new Set<() => void>();
 function readMine(): string | null {
   if (myAvatar !== undefined) return myAvatar;
   try {
-    const file = new File(Paths.document, MY_FILE);
-    myAvatar = file.exists ? file.textSync() || null : null;
+    myAvatar = readText(MY_FILE) || null;
   } catch {
     myAvatar = null;
   }
@@ -38,9 +37,8 @@ function readMine(): string | null {
 function storeMine(base64: string | null): void {
   myAvatar = base64;
   try {
-    const file = new File(Paths.document, MY_FILE);
-    if (base64) file.write(base64);
-    else if (file.exists) file.delete();
+    if (base64) writeText(MY_FILE, base64);
+    else deleteText(MY_FILE);
   } catch {
     // Keep it in memory for this session.
   }

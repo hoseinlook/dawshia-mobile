@@ -1,7 +1,6 @@
-import { File, Paths } from 'expo-file-system';
-
 import type { MatchResult } from '../../core/match/types';
 import type { MatchHistoryRepository } from '../types';
+import { readText, writeText } from './textStore';
 
 const FILE_NAME = 'history.json';
 /** Oldest results are dropped beyond this many. */
@@ -10,12 +9,12 @@ const MAX_RESULTS = 2000;
 /** Match history saved as JSON on the device, so stats survive app restarts. */
 export class FileHistoryRepository implements MatchHistoryRepository {
   private results: MatchResult[] | null = null;
-  private readonly file = new File(Paths.document, FILE_NAME);
 
   private load(): MatchResult[] {
     if (this.results) return this.results;
     try {
-      this.results = this.file.exists ? (JSON.parse(this.file.textSync()) as MatchResult[]) : [];
+      const text = readText(FILE_NAME);
+      this.results = text ? (JSON.parse(text) as MatchResult[]) : [];
     } catch {
       this.results = [];
     }
@@ -27,7 +26,7 @@ export class FileHistoryRepository implements MatchHistoryRepository {
     results.unshift(result);
     results.sort((a, b) => b.finishedAtMs - a.finishedAtMs);
     this.results = results.slice(0, MAX_RESULTS);
-    this.file.write(JSON.stringify(this.results));
+    writeText(FILE_NAME, JSON.stringify(this.results));
   }
 
   async get(matchId: string): Promise<MatchResult | undefined> {

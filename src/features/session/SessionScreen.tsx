@@ -1,9 +1,8 @@
 import { useKeepAwake } from 'expo-keep-awake';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, BackHandler, Linking, StyleSheet, View } from 'react-native';
+import { BackHandler, Linking, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 
 import type { ExerciseDefinition } from '../../core/exercises/types';
 import { primaryScore, remainingMs } from '../../core/match/matchReducer';
@@ -12,6 +11,7 @@ import type { MatchMode } from '../../core/match/types';
 import { personalBest } from '../../core/progress/progress';
 import { cueText, exerciseText, timeControlText } from '../../i18n/lookup';
 import { ChallengeError, type ChallengeMatch } from '../../services/types';
+import { showAlert } from '../../ui/alert';
 import { useI18n } from '../../i18n/useI18n';
 import { AppText } from '../../ui/components/AppText';
 import { Button } from '../../ui/components/Button';
@@ -23,7 +23,7 @@ import { useCheers } from '../audio/useCheers';
 import { useMatchAudio } from '../audio/useMatchAudio';
 import { useSettings } from '../settings/SettingsProvider';
 import { SkeletonOverlay } from '../pose/SkeletonOverlay';
-import { usePoseDetection } from '../pose/usePoseDetection';
+import { usePoseCamera } from '../pose/PoseCamera';
 import { useHistory } from '../progress/useHistory';
 import { CueBanner } from './components/CueBanner';
 import { FlappyField } from './components/FlappyField';
@@ -66,10 +66,9 @@ export function SessionScreen({ exercise, timeControlId, mode, challenge }: Prop
   useScreenOrientation(exercise.camera.orientation);
   const { m, f, n, dir } = useI18n();
 
-  const { hasPermission, requestPermission } = useCameraPermission();
-  const device = useCameraDevice('front');
   const session = useMatchSession({ exercise, timeControlId, mode, challenge });
-  const detection = usePoseDetection(session.onPose);
+  const detection = usePoseCamera(session.onPose);
+  const { hasPermission, requestPermission } = detection;
   const cheer = useCheers();
   const { settings } = useSettings();
 
@@ -158,7 +157,7 @@ export function SessionScreen({ exercise, timeControlId, mode, challenge }: Prop
     const leave = () => (matchStatus === 'live' ? abort() : router.back());
     if (!inProgress) return leave;
     return () =>
-      Alert.alert(m.session.leaveTitle, m.session.leaveMessage, [
+      showAlert(m.session.leaveTitle, m.session.leaveMessage, [
         { text: m.session.stay, style: 'cancel' },
         { text: m.session.leave, style: 'destructive', onPress: leave },
       ]);
@@ -211,7 +210,7 @@ export function SessionScreen({ exercise, timeControlId, mode, challenge }: Prop
       </Centered>
     );
   }
-  if (!device) {
+  if (!detection.available) {
     return (
       <Centered>
         <AppText center>{m.session.noCamera}</AppText>
@@ -313,7 +312,7 @@ export function SessionScreen({ exercise, timeControlId, mode, challenge }: Prop
 
   return (
     <View style={[styles.root, dir]}>
-      <Camera style={StyleSheet.absoluteFill} device={device} isActive outputs={[detection.frameOutput]} />
+      {detection.preview}
       <SkeletonOverlay pose={session.pose} color={feedback.inPosition ? colors.accent : colors.warning} />
       {game && match ? (
         <FlappyField

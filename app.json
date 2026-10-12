@@ -63,7 +63,17 @@
       ]
     ],
     "experiments": {
-      "typedRoutes": true
+      "typedRoutes": true,
+      "baseUrl": "/app"
+    },
+    "web": {
+      "output": "single",
+      "bundler": "metro",
+      "favicon": "./assets/favicon.png",
+      "name": "Dawshia",
+      "shortName": "Dawshia",
+      "themeColor": "#0B0F1A",
+      "backgroundColor": "#0B0F1A"
     }
   }
 }

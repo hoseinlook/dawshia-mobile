@@ -36,6 +36,21 @@ npm run android:release                        # builds, installs and opens it o
 
 The APK is in `android/app/build/outputs/apk/release/`. It's signed with the debug key, which is fine for your own phones. Publishing to Google Play needs your own upload key.
 
+### Web version
+
+The same app runs in the browser at **https://dawshia.ir/app/**: sign-in, ranking, friends, chat, 1v1 and the camera sessions.
+
+- Camera sessions use the webcam (`getUserMedia`, which needs HTTPS) and the same MoveNet Lightning model, run with TensorFlow.js on WebGL. The model is served with the app from [`public/models/movenet`](public/models/movenet), not from Google.
+- The web-only code is in `.web.ts(x)` files next to the native ones: [`PoseCamera.web.tsx`](src/features/pose/PoseCamera.web.tsx), [`poseEngine.web.ts`](src/features/pose/poseEngine.web.ts), [`textStore.web.ts`](src/services/local/textStore.web.ts) (localStorage instead of files), and [`alert.web.ts`](src/ui/alert.web.ts).
+- `experiments.baseUrl` in `app.json` is `/app`, so the build only works under that path.
+
+```sh
+npx expo start --web                         # local development
+scripts/deploy-web.sh root@94.184.32.14      # build and publish to /opt/dawshia/web/app
+```
+
+nginx serves it, and client-side routes fall back to `index.html` (see `dawshia-server/deploy/docker/nginx`).
+
 ## How it works
 
 ```

@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
+import { showAlert } from '../../ui/alert';
 import { useI18n } from '../../i18n/useI18n';
 import { useServices } from '../../services/ServicesProvider';
 import { AppText } from '../../ui/components/AppText';
@@ -24,7 +25,7 @@ export function ProfilePhoto({ name }: { name: string }) {
     try {
       await setMyAvatar(social, next);
     } catch {
-      Alert.alert(m.profile.photoError);
+      showAlert(m.profile.photoError);
     } finally {
       setBusy(false);
     }
@@ -35,7 +36,7 @@ export function ProfilePhoto({ name }: { name: string }) {
       const picked = await pickAvatar();
       if (picked) await save(picked);
     } catch {
-      Alert.alert(m.profile.photoError);
+      showAlert(m.profile.photoError);
     }
   };
 
@@ -44,7 +45,7 @@ export function ProfilePhoto({ name }: { name: string }) {
       choose();
       return;
     }
-    Alert.alert(m.profile.changePhoto, undefined, [
+    showAlert(m.profile.changePhoto, undefined, [
       { text: m.profile.choosePhoto, onPress: choose },
       { text: m.profile.removePhoto, style: 'destructive', onPress: () => save(null) },
       { text: m.profile.cancel, style: 'cancel' },

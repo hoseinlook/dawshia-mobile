@@ -1,17 +1,16 @@
-import { File, Paths } from 'expo-file-system';
-
+import { deleteText, readText, writeText } from '../../services/local/textStore';
 import type { Session } from './session';
 
 /**
- * Persists the session in the app's private storage.
+ * Persists the session in the app's private storage (localStorage on the web).
  * TODO: move to the OS keychain (expo-secure-store) — needs a native rebuild.
  */
-const file = () => new File(Paths.document, 'session.json');
+const FILE_NAME = 'session.json';
 
 export function loadSession(): Session | null {
   try {
-    const f = file();
-    return f.exists ? (JSON.parse(f.textSync()) as Session) : null;
+    const text = readText(FILE_NAME);
+    return text ? (JSON.parse(text) as Session) : null;
   } catch {
     return null;
   }
@@ -19,17 +18,12 @@ export function loadSession(): Session | null {
 
 export function saveSession(session: Session): void {
   try {
-    file().write(JSON.stringify(session));
+    writeText(FILE_NAME, JSON.stringify(session));
   } catch {
     // Not fatal: the user just has to sign in again next launch.
   }
 }
 
 export function clearSession(): void {
-  try {
-    const f = file();
-    if (f.exists) f.delete();
-  } catch {
-    // Ignore.
-  }
+  deleteText(FILE_NAME);
 }

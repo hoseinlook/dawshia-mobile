@@ -2,7 +2,6 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Pressable,
   RefreshControl,
@@ -21,6 +20,7 @@ import { ConversationRow } from '../../features/chat/ConversationRow';
 import { useFriends } from '../../features/social/FriendsProvider';
 import { formatScore, timeAgo } from '../../i18n/activity';
 import { exerciseText } from '../../i18n/lookup';
+import { showAlert } from '../../ui/alert';
 import { useI18n } from '../../i18n/useI18n';
 import { useServices } from '../../services/ServicesProvider';
 import type { FriendInfo } from '../../services/types';
@@ -347,13 +347,13 @@ function FriendRow({ friend }: { friend: FriendInfo }) {
     try {
       await action();
     } catch {
-      Alert.alert(m.friends.loadError);
+      showAlert(m.friends.loadError);
     } finally {
       setBusy(false);
     }
   };
   const confirmRemove = () =>
-    Alert.alert(m.friends.remove, f(m.friends.removeConfirm, { username: friend.username }), [
+    showAlert(m.friends.remove, f(m.friends.removeConfirm, { username: friend.username }), [
       { text: m.session.stay, style: 'cancel' },
       {
         text: m.friends.remove,
