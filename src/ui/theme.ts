@@ -14,6 +14,8 @@ export const colors = {
   accent: '#3DDC97',
   accentDim: '#1F6E4C',
   onAccent: '#0B0F1A',
+  /** Secondary text on `accent` (e.g. message times), still ≥4.5:1. */
+  onAccentMuted: '#0B0F1ABF',
   /** Opponent. */
   opponent: '#FF6B5B',
   /** XP, levels, records, achievements. */

@@ -113,6 +113,8 @@ async function main() {
   check(again.history.length === 3, 'history is kept (including the in-match message)');
   check(again.history[0].text === 'سلام! باشه 💪' && again.history[1].text === 'gg! rematch?' && again.history[2].text === 'good luck, see you at the top!', 'newest first, Persian and emoji intact');
   again.close();
+  const preview = (await a.rpc<{ partners: ChatPartner[] }>('get_chat_partners')).partners[0]?.lastMessage;
+  check(preview?.text === 'سلام! باشه 💪' && preview.senderId === b.userId && preview.at > 0, 'the chat list previews the newest message');
   bPresence.close();
 
   console.log('rooms are closed');

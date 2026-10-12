@@ -15,7 +15,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../../features/auth/AuthProvider';
 import { useAvatar } from '../../features/avatar/avatars';
+import { buildChatRows, daysBetween, type ChatRowItem } from '../../features/chat/chatFormat';
 import { useChat } from '../../features/chat/ChatProvider';
+import { timeAgo } from '../../i18n/activity';
 import { useI18n } from '../../i18n/useI18n';
 import { useServices } from '../../services/ServicesProvider';
 import { MAX_CHAT_LENGTH, type ChatConversation, type ChatMessage } from '../../services/types';
@@ -37,7 +39,7 @@ export default function ChatScreen() {
   const { userId, username: nameParam = '' } = useLocalSearchParams<{ userId: string; username?: string }>();
   const { social } = useServices();
   const { session } = useAuth();
-  const { partners, setActive } = useChat();
+  const { partners, setActive, notePreview } = useChat();
   const partner = partners?.find((p) => p.userId === userId);
   const username = partner?.username ?? nameParam;
   const avatar = useAvatar(social, userId, partner?.avatarAt);
@@ -71,8 +73,13 @@ export default function ChatScreen() {
         setMessages(c.history);
         setHasOlder(c.history.length > 0);
         setStatus('ready');
+        const newest = c.history[0];
+        if (newest) notePreview(userId, { senderId: newest.senderId, text: newest.text, at: newest.at });
         unsubscribe = [
-          c.subscribe((msg) => setMessages((prev) => (prev.some((x) => x.id === msg.id) ? prev : [msg, ...prev]))),
+          c.subscribe((msg) => {
+            setMessages((prev) => (prev.some((x) => x.id === msg.id) ? prev : [msg, ...prev]));
+            notePreview(userId, { senderId: msg.senderId, text: msg.text, at: msg.at });
+          }),
           c.onDisconnect(() => setStatus('disconnected')),
         ];
       } catch (e) {
@@ -86,7 +93,7 @@ export default function ChatScreen() {
       conversation.current?.close();
       conversation.current = null;
     };
-  }, [social, userId, attempt]);
+  }, [social, userId, attempt, notePreview]);
 
   const retry = () => {
     setStatus('loading');
@@ -117,6 +124,7 @@ export default function ChatScreen() {
   };
 
   const myId = session?.userId;
+  const rows = useMemo(() => buildChatRows(messages, myId), [messages, myId]);
   const time = useMemo(
     () => (at: number) => {
       const d = new Date(at);
@@ -124,6 +132,46 @@ export default function ChatScreen() {
     },
     [n],
   );
+  const rankLine = [
+    partner?.rank && partner.rank in m.ranks ? m.ranks[partner.rank as keyof typeof m.ranks] : null,
+    partner?.level ? f(m.vs.level, { level: partner.level }) : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  const renderRow = ({ item }: { item: ChatRowItem }) => {
+    if (item.kind === 'day') {
+      return (
+        <View style={styles.day} accessibilityRole="header">
+          <AppText variant="caption" color={colors.textMuted}>
+            {dayLabel(item.at, m.messages, n)}
+          </AppText>
+        </View>
+      );
+    }
+    const { message, mine, groupStart, groupEnd } = item;
+    return (
+      <View
+        style={[
+          styles.bubble,
+          mine ? styles.mine : styles.theirs,
+          groupStart && styles.groupStart,
+          !groupEnd && (mine ? styles.mineJoined : styles.theirsJoined),
+        ]}
+        accessible
+        accessibilityLabel={`${mine ? m.common.you : message.username}: ${message.text}, ${time(message.at)}`}
+      >
+        <AppText color={mine ? colors.onAccent : colors.text} style={styles.messageText}>
+          {message.text}
+        </AppText>
+        {groupEnd ? (
+          <AppText variant="caption" color={mine ? colors.onAccentMuted : colors.textMuted} style={styles.time}>
+            {time(message.at)}
+          </AppText>
+        ) : null}
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={[styles.root, dir]} edges={['top', 'bottom']}>
@@ -139,8 +187,8 @@ export default function ChatScreen() {
         <Pressable
           onPress={() => router.push({ pathname: '/player/[userId]', params: { userId } })}
           accessibilityRole="button"
-          accessibilityLabel={username}
-          style={styles.who}
+          accessibilityLabel={[username, rankLine].filter(Boolean).join(', ')}
+          style={({ pressed }) => [styles.who, pressed && styles.pressed]}
         >
           <Avatar image={avatar} name={username} size={40} online={partner?.online} />
           <View style={styles.whoText}>
@@ -148,11 +196,19 @@ export default function ChatScreen() {
               {username}
             </AppText>
             {partner ? (
-              <AppText variant="caption" color={partner.online ? colors.accent : colors.textMuted} start>
+              // Online status is text + color, never color alone.
+              <AppText
+                variant="caption"
+                color={partner.online ? colors.accent : colors.textMuted}
+                start
+                numberOfLines={1}
+              >
                 {partner.online ? m.friends.online : m.friends.offline}
+                {rankLine ? <AppText variant="caption" color={colors.textMuted}>{` · ${rankLine}`}</AppText> : null}
               </AppText>
             ) : null}
           </View>
+          <Icon name={isRTL ? 'chevron-left' : 'chevron-right'} color={colors.textMuted} />
         </Pressable>
       </View>
 
@@ -181,58 +237,58 @@ export default function ChatScreen() {
             ) : null}
             <FlatList
               inverted
-              data={messages}
-              keyExtractor={(x) => x.id}
+              data={rows}
+              keyExtractor={(x) => x.key}
               contentContainerStyle={styles.list}
               keyboardShouldPersistTaps="handled"
               onEndReached={loadOlder}
               onEndReachedThreshold={0.3}
+              renderItem={renderRow}
+              // Inverted: the footer is drawn at the top, above the oldest message.
+              ListFooterComponent={
+                messages.length > 0 && !hasOlder && partner?.lastPlayedAt ? (
+                  <View style={styles.context}>
+                    <Icon name="sword-cross" size="sm" color={colors.gold} />
+                    <AppText variant="caption" color={colors.textMuted}>
+                      {f(m.messages.playedTogether, { when: timeAgo(m, f, partner.lastPlayedAt) })}
+                    </AppText>
+                  </View>
+                ) : null
+              }
               ListEmptyComponent={
                 <View style={[styles.empty, styles.flipped]}>
-                  <Icon name="hand-wave-outline" size="xl" color={colors.gold} />
+                  <Avatar image={avatar} name={username} size={88} />
+                  <AppText variant="heading" center style={styles.ltr}>
+                    {username}
+                  </AppText>
                   <AppText center color={colors.textMuted}>
                     {f(m.messages.empty, { username })}
                   </AppText>
                 </View>
               }
-              renderItem={({ item }) => {
-                const mine = item.senderId === myId;
-                return (
-                  <View
-                    style={[styles.bubble, mine ? styles.mine : styles.theirs]}
-                    accessible
-                    accessibilityLabel={`${mine ? m.common.you : item.username}: ${item.text}, ${time(item.at)}`}
-                  >
-                    <AppText color={mine ? colors.background : colors.text} style={styles.messageText}>
-                      {item.text}
-                    </AppText>
-                    <AppText variant="caption" color={mine ? '#0B0F1AAA' : colors.textMuted} style={styles.time}>
-                      {time(item.at)}
-                    </AppText>
-                  </View>
-                );
-              }}
             />
 
-            {/* Quick replies: one tap after a match. */}
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.suggestions}
-              keyboardShouldPersistTaps="handled"
-            >
-              {SUGGESTIONS.map((key) => (
-                <Pressable
-                  key={key}
-                  onPress={() => send(m.messages[key])}
-                  disabled={status !== 'ready' || sending}
-                  accessibilityRole="button"
-                  style={({ pressed }) => [styles.suggestion, pressed && styles.pressed]}
-                >
-                  <AppText variant="label">{m.messages[key]}</AppText>
-                </Pressable>
-              ))}
-            </ScrollView>
+            {/* Quick replies: one tap after a match, while nothing is typed. */}
+            {text.length === 0 ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.suggestions}
+                keyboardShouldPersistTaps="handled"
+              >
+                {SUGGESTIONS.map((key) => (
+                  <Pressable
+                    key={key}
+                    onPress={() => send(m.messages[key])}
+                    disabled={status !== 'ready' || sending}
+                    accessibilityRole="button"
+                    style={({ pressed }) => [styles.suggestion, pressed && styles.pressed]}
+                  >
+                    <AppText variant="label">{m.messages[key]}</AppText>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            ) : null}
 
             {sendError ? (
               <AppText variant="caption" color={colors.danger} center accessibilityRole="alert">
@@ -284,6 +340,15 @@ export default function ChatScreen() {
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
+}
+
+/** "Today", "Yesterday" or the date of a day separator. */
+function dayLabel(at: number, labels: { today: string; yesterday: string }, n: (v: string) => string): string {
+  const days = daysBetween(at, Date.now());
+  if (days <= 0) return labels.today;
+  if (days === 1) return labels.yesterday;
+  const d = new Date(at);
+  return n(`${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`);
 }
 
 const styles = StyleSheet.create({
@@ -343,8 +408,28 @@ const styles = StyleSheet.create({
   },
   list: {
     flexGrow: 1,
-    padding: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  day: {
+    alignSelf: 'center',
+    marginVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+  },
+  context: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
     gap: spacing.xs,
+    marginVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.goldDim,
   },
   // The list is inverted; its empty view is flipped back upright.
   flipped: {
@@ -359,20 +444,32 @@ const styles = StyleSheet.create({
   },
   bubble: {
     maxWidth: '80%',
+    marginTop: 2,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: radius.lg,
     gap: 2,
   },
+  // A new group from the other side gets more room above it.
+  groupStart: {
+    marginTop: spacing.sm,
+  },
+  // The tail corner sits on the last bubble of a group; joined bubbles stay flat on that side.
   mine: {
     alignSelf: 'flex-end',
     backgroundColor: colors.accent,
     borderBottomEndRadius: radius.sm,
   },
+  mineJoined: {
+    borderTopEndRadius: radius.sm,
+  },
   theirs: {
     alignSelf: 'flex-start',
     backgroundColor: colors.surfaceRaised,
     borderBottomStartRadius: radius.sm,
+  },
+  theirsJoined: {
+    borderTopStartRadius: radius.sm,
   },
   messageText: {
     textAlign: 'auto',

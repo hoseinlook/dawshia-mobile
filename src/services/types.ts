@@ -179,6 +179,16 @@ export interface ChatPartner {
   rank?: string;
   avatarAt?: number;
   lastPlayedAt: number;
+  /** Newest message of the conversation, if any. */
+  lastMessage?: ChatPreview;
+}
+
+/** The newest message of a conversation, for the chat list. */
+export interface ChatPreview {
+  senderId: string;
+  text: string;
+  /** Epoch ms. */
+  at: number;
 }
 
 export interface ChatMessage {

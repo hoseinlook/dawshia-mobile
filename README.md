@@ -7,7 +7,7 @@ A competitive bodyweight-training app: the phone camera watches you, counts ever
 **Current scope:** offline practice mode with:
 - **Most reps in a time control:** push-ups, pull-ups, deep parallel-bar dips, muscle-ups and handstand push-ups.
 - **Resistance (longest hold wins):** handstand, L-sit and front lever.
-- **Game:** **Flappy Push**. Hold a push-up plank **face to face** with the phone (upright on the floor in front of you) and steer a bird through pipes with your height; most pipes passed wins. The bird follows how high your shoulders are above your hands, calibrated to your straight-arm position and shoulder width, so it works at any distance (`core/exercises/flappy/flappyAnalyzer.ts`).
+- **Game:** **Flappy Push**. Hold a push-up plank **face to face** with the phone (upright on the floor in front of you) and steer a bird through pipes with your height; most pipes passed wins. The bird follows how high your shoulders are above your hands, calibrated to your straight-arm position and shoulder width, so it works at any distance (`core/exercises/flappy/flappyAnalyzer.ts`). Leaving the plank only ends the game after 1 s, so a missed frame doesn't, and while your hands aren't detected their last position on the floor is used.
 
 Every movement can be played as **practice** (offline) or **Ranked 1v1** (online, signed in). The code is structured so that more exercises and online 1v1 (through `dawshia-server`) can be added without restructuring.
 
@@ -96,7 +96,7 @@ assets/models/                TFLite models
 1. Create `src/core/exercises/<name>/`.
 2. Implement an `ExerciseAnalyzer`. Most exercises can reuse `RepStateMachine` with a joint-angle signal:
    - squat: knee angle, `startZone: 'high'`
-   - pull-up: elbow angle, `startZone: 'low'`
+   - pull-up: how far the shoulders rose above the dead hang (in shoulder widths), `startZone: 'low'`. This only needs the shoulders, so it keeps counting when the phone stands on the floor and the hands and bar are out of the frame. The elbow angle (full hang) and the chin-over-bar check are applied when the arms and hands are visible.
 3. Export an `ExerciseDefinition` with its camera setup (orientation and view) and the competition types it offers (`competitions`). The menu only shows those types, so a movement like a handstand can offer a single type.
 4. Add it to the list in `src/core/exercises/registry.ts`.
 5. Add its texts under `exercises.<id>` (name, description, setup instructions), plus any new form-cue codes under `cues`, in **every** file in `src/i18n/messages/`. TypeScript reports any missing keys.
@@ -260,10 +260,16 @@ As soon as two players are matched (ranked or friendly), they can message each o
 - **Where to start a chat:**
   - **Results:** a **Message {opponent}** button
   - **Player page:** a **Message** button when you have played them
-  - **Friends tab:** a **Messages** section lists your past opponents, newest first, with unread counts
+  - **Friends tab → Messages:** a Friends / Messages switch at the top of the tab, with the unread count on Messages
+- **The Messages list (`features/chat/ConversationRow.tsx`):**
+  - one row per current or past opponent: photo with online dot, name, the newest message ("You: …" for yours) and its time
+  - unread conversations come first, with a count badge and a highlighted border; then the most recent activity
+  - with no chats yet, an empty state explains how to start one and links to a 1v1
 - **The chat screen:**
   - live messages and a history of earlier ones
-  - quick replies: "Good game!", "Rematch?" and two more
+  - day separators (Today, Yesterday, then the date); messages from the same person within 5 minutes are grouped, with the time on the last one (`features/chat/chatFormat.ts`)
+  - a note at the top: when you played your 1v1 together
+  - quick replies ("Good game!", "Rematch?" and two more) while the text box is empty
   - text up to 500 characters; Persian, English and emoji all work
 - **New messages:**
   - a preview card appears above the tab bar for 5 s; tap it to open the chat
@@ -272,6 +278,7 @@ As soon as two players are matched (ranked or friendly), they can message each o
 How it works:
 - It uses Nakama **direct-message channels** (`services/remote/chat.ts`). Each open chat has its own socket, and history comes from `GET /v2/channel/{id}`.
 - The server only lets two players open a channel if they have been matched in a 1v1. That's recorded when both join the match. It checks every message and sends the other player a notification (code 102) on their presence socket (`features/chat/ChatProvider.tsx`).
+- The list previews each conversation's newest message, from `get_chat_partners`. It updates live as messages arrive or are sent.
 - Unread counts live in memory. They count messages that arrive while the app is open and reset when you open that chat.
 
 End-to-end test (chat during and after a 1v1, strangers blocked, live delivery, notification, limits, history):

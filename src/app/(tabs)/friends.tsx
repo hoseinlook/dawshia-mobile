@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -14,13 +15,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../../features/auth/AuthProvider';
 import { SignInRequired } from '../../features/auth/SignInRequired';
+import { sortConversations } from '../../features/chat/chatFormat';
 import { useChat } from '../../features/chat/ChatProvider';
+import { ConversationRow } from '../../features/chat/ConversationRow';
 import { useFriends } from '../../features/social/FriendsProvider';
 import { formatScore, timeAgo } from '../../i18n/activity';
 import { exerciseText } from '../../i18n/lookup';
 import { useI18n } from '../../i18n/useI18n';
 import { useServices } from '../../services/ServicesProvider';
-import type { ChatPartner, FriendInfo } from '../../services/types';
+import type { FriendInfo } from '../../services/types';
 import { useAvatar } from '../../features/avatar/avatars';
 import { AppText } from '../../ui/components/AppText';
 import { Avatar } from '../../ui/components/Avatar';
@@ -32,13 +35,15 @@ import { colors, radius, spacing, touchTarget } from '../../ui/theme';
 type Messages = ReturnType<typeof useI18n>['m'];
 type Fill = ReturnType<typeof useI18n>['f'];
 type Feedback = { kind: 'ok' | 'error'; text: string } | null;
+type Tab = 'friends' | 'messages';
 
 export default function FriendsScreen() {
   useScreenOrientation('portrait');
   const { m, dir } = useI18n();
-  const { available, friends, error, refresh } = useFriends();
+  const { available, refresh } = useFriends();
   const chat = useChat();
   const refreshChats = chat.refresh;
+  const [tab, setTab] = useState<Tab>('friends');
   const [refreshing, setRefreshing] = useState(false);
 
   // Fresh statuses whenever the tab is opened.
@@ -57,6 +62,82 @@ export default function FriendsScreen() {
 
   if (!available) return <SignInRequired title={m.friends.offlineTitle} text={m.friends.offlineText} />;
 
+  const refreshControl = <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.text} />;
+  const header = (
+    <View style={styles.header}>
+      <AppText variant="title" start>
+        {tab === 'friends' ? m.friends.title : m.messages.title}
+      </AppText>
+      <Tabs tab={tab} onChange={setTab} unread={chat.totalUnread} />
+    </View>
+  );
+
+  return (
+    <SafeAreaView style={[styles.root, dir]} edges={['top']}>
+      {tab === 'friends' ? (
+        <FriendsList header={header} refreshControl={refreshControl} onRetry={onRefresh} />
+      ) : (
+        <Inbox header={header} refreshControl={refreshControl} />
+      )}
+    </SafeAreaView>
+  );
+}
+
+/** Friends / Messages switch at the top of the tab; Messages shows its unread count. */
+function Tabs({ tab, onChange, unread }: { tab: Tab; onChange: (tab: Tab) => void; unread: number }) {
+  const { m, f, n } = useI18n();
+  const items: { id: Tab; label: string; icon: React.ComponentProps<typeof Icon>['name'] }[] = [
+    { id: 'friends', label: m.messages.tabFriends, icon: 'account-group' },
+    { id: 'messages', label: m.messages.tabMessages, icon: 'message-text' },
+  ];
+  return (
+    <View style={styles.tabs} accessibilityRole="tablist">
+      {items.map((item) => {
+        const selected = item.id === tab;
+        const badge = item.id === 'messages' && unread > 0;
+        return (
+          <Pressable
+            key={item.id}
+            onPress={() => onChange(item.id)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected }}
+            accessibilityLabel={badge ? f(m.messages.tabUnread, { n: unread }) : item.label}
+            style={({ pressed }) => [
+              styles.tab,
+              selected && styles.tabSelected,
+              pressed && !selected && styles.tabPressed,
+            ]}
+          >
+            <Icon name={item.icon} size="sm" color={selected ? colors.onAccent : colors.textMuted} />
+            <AppText variant="label" color={selected ? colors.onAccent : colors.textMuted}>
+              {item.label}
+            </AppText>
+            {badge ? (
+              <View style={[styles.tabBadge, selected && styles.tabBadgeSelected]}>
+                <AppText variant="caption" color={selected ? colors.accent : colors.onAccent}>
+                  {n(unread > 99 ? '99+' : unread)}
+                </AppText>
+              </View>
+            ) : null}
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+function FriendsList({
+  header,
+  refreshControl,
+  onRetry,
+}: {
+  header: React.ReactNode;
+  refreshControl: React.ReactElement<React.ComponentProps<typeof RefreshControl>>;
+  onRetry: () => void;
+}) {
+  const { m } = useI18n();
+  const { friends, error } = useFriends();
+
   const incoming = friends?.filter((x) => x.state === 'incoming') ?? [];
   const outgoing = friends?.filter((x) => x.state === 'outgoing') ?? [];
   // Online friends first, then the most recently active.
@@ -65,68 +146,104 @@ export default function FriendsScreen() {
   );
 
   return (
-    <SafeAreaView style={[styles.root, dir]} edges={['top']}>
-      <ScrollView
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.text} />}
-      >
-        <AppText variant="title" start>
-          {m.friends.title}
-        </AppText>
+    <ScrollView
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+      refreshControl={refreshControl}
+    >
+      {header}
+      <AddFriend />
 
-        <AddFriend />
+      {friends === null && !error ? <ActivityIndicator color={colors.accent} style={styles.loading} /> : null}
+      {error && friends === null ? (
+        <View style={styles.notice}>
+          <AppText color={colors.textMuted} start>
+            {m.friends.loadError}
+          </AppText>
+          <Button label={m.profile.retry} variant="secondary" icon="refresh" onPress={onRetry} />
+        </View>
+      ) : null}
 
-        {friends === null && !error ? <ActivityIndicator color={colors.accent} style={styles.loading} /> : null}
-        {error && friends === null ? (
-          <View style={styles.notice}>
-            <AppText color={colors.textMuted} start>
-              {m.friends.loadError}
-            </AppText>
-            <Button label={m.profile.retry} variant="secondary" icon="refresh" onPress={onRefresh} />
-          </View>
-        ) : null}
+      {incoming.length > 0 ? (
+        <Section title={m.friends.requests} count={incoming.length}>
+          {incoming.map((x) => (
+            <FriendRow key={x.userId} friend={x} />
+          ))}
+        </Section>
+      ) : null}
 
-        {incoming.length > 0 ? (
-          <Section title={m.friends.requests} count={incoming.length}>
-            {incoming.map((x) => (
-              <FriendRow key={x.userId} friend={x} />
-            ))}
-          </Section>
-        ) : null}
+      {friends !== null ? (
+        <Section title={m.friends.list} count={mutual.length}>
+          {mutual.length === 0 && outgoing.length === 0 ? (
+            <View style={styles.empty}>
+              <Icon name="account-group-outline" size="xl" color={colors.textMuted} />
+              <AppText variant="bodyBold">{m.friends.emptyTitle}</AppText>
+              <AppText variant="caption" color={colors.textMuted} style={styles.center}>
+                {m.friends.emptyText}
+              </AppText>
+            </View>
+          ) : null}
+          {mutual.map((x) => (
+            <FriendRow key={x.userId} friend={x} />
+          ))}
+          {outgoing.map((x) => (
+            <FriendRow key={x.userId} friend={x} />
+          ))}
+        </Section>
+      ) : null}
+    </ScrollView>
+  );
+}
 
-        {friends !== null ? (
-          <Section title={m.friends.list} count={mutual.length}>
-            {mutual.length === 0 && outgoing.length === 0 ? (
-              <View style={styles.empty}>
-                <Icon name="account-group-outline" size="xl" color={colors.textMuted} />
-                <AppText variant="bodyBold">{m.friends.emptyTitle}</AppText>
-                <AppText variant="caption" color={colors.textMuted} style={styles.center}>
-                  {m.friends.emptyText}
-                </AppText>
-              </View>
-            ) : null}
-            {mutual.map((x) => (
-              <FriendRow key={x.userId} friend={x} />
-            ))}
-            {outgoing.map((x) => (
-              <FriendRow key={x.userId} friend={x} />
-            ))}
-          </Section>
-        ) : null}
+/** Conversations with current and past 1v1 opponents, unread and newest first. */
+function Inbox({
+  header,
+  refreshControl,
+}: {
+  header: React.ReactNode;
+  refreshControl: React.ReactElement<React.ComponentProps<typeof RefreshControl>>;
+}) {
+  const { m } = useI18n();
+  const { session } = useAuth();
+  const { partners, unread } = useChat();
+  const conversations = partners ? sortConversations(partners, unread) : null;
 
-        {chat.partners && chat.partners.length > 0 ? (
-          <Section title={m.messages.title} count={chat.totalUnread}>
+  return (
+    <FlatList
+      data={conversations ?? []}
+      keyExtractor={(p) => p.userId}
+      renderItem={({ item }) => (
+        <ConversationRow partner={item} unread={unread[item.userId] ?? 0} myId={session?.userId} />
+      )}
+      contentContainerStyle={styles.content}
+      refreshControl={refreshControl}
+      ListHeaderComponent={
+        <View style={styles.inboxHeader}>
+          {header}
+          {conversations && conversations.length > 0 ? (
             <AppText variant="caption" color={colors.textMuted} start>
               {m.messages.hint}
             </AppText>
-            {chat.partners.map((p) => (
-              <ChatRow key={p.userId} partner={p} unread={chat.unread[p.userId] ?? 0} />
-            ))}
-          </Section>
-        ) : null}
-      </ScrollView>
-    </SafeAreaView>
+          ) : null}
+        </View>
+      }
+      ListEmptyComponent={
+        conversations === null ? (
+          <ActivityIndicator color={colors.accent} style={styles.loading} />
+        ) : (
+          <View style={styles.empty}>
+            <View style={styles.emptyIcon}>
+              <Icon name="message-text-outline" size="lg" color={colors.accent} />
+            </View>
+            <AppText variant="bodyBold">{m.messages.inboxEmptyTitle}</AppText>
+            <AppText variant="caption" color={colors.textMuted} style={styles.center}>
+              {m.messages.inboxEmptyText}
+            </AppText>
+            <Button label={m.messages.playOneVsOne} icon="sword-cross" onPress={() => router.navigate('/')} />
+          </View>
+        )
+      }
+    />
   );
 }
 
@@ -347,49 +464,6 @@ function FriendRow({ friend }: { friend: FriendInfo }) {
   );
 }
 
-/** A past 1v1 opponent: opens the chat. */
-function ChatRow({ partner, unread }: { partner: ChatPartner; unread: number }) {
-  const { m, f, n } = useI18n();
-  const { social } = useServices();
-  const avatar = useAvatar(social, partner.userId, partner.avatarAt);
-  const status = partner.online ? m.friends.online : m.friends.offline;
-  const played = f(m.messages.lastMatch, { when: timeAgo(m, f, partner.lastPlayedAt) });
-  return (
-    <Pressable
-      onPress={() =>
-        router.push({ pathname: '/chat/[userId]', params: { userId: partner.userId, username: partner.username } })
-      }
-      accessibilityRole="button"
-      accessibilityLabel={[
-        f(m.messages.messageUser, { username: partner.username }),
-        status,
-        unread > 0 ? f(m.messages.newCount, { n: unread }) : null,
-      ]
-        .filter(Boolean)
-        .join(', ')}
-      style={({ pressed }) => [styles.row, pressed && styles.iconButtonPressed]}
-    >
-      <Avatar image={avatar} name={partner.username} online={partner.online} />
-      <View style={styles.rowText}>
-        <AppText variant="bodyBold" start numberOfLines={1} style={styles.username}>
-          {partner.username}
-        </AppText>
-        <AppText variant="caption" color={unread > 0 ? colors.accent : colors.textMuted} start numberOfLines={1}>
-          {unread > 0 ? f(m.messages.newCount, { n: unread }) : played}
-        </AppText>
-      </View>
-      {unread > 0 ? (
-        <View style={styles.unread}>
-          <AppText variant="caption" color={colors.background}>
-            {n(unread)}
-          </AppText>
-        </View>
-      ) : null}
-      <Icon name="message-text-outline" color={colors.accent} />
-    </Pressable>
-  );
-}
-
 function IconButton({
   icon,
   label,
@@ -432,6 +506,54 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     paddingTop: spacing.lg,
     gap: spacing.md,
+  },
+  header: {
+    gap: spacing.md,
+  },
+  inboxHeader: {
+    gap: spacing.sm,
+  },
+  tabs: {
+    flexDirection: 'row',
+    padding: spacing.xs,
+    gap: spacing.xs,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    minHeight: touchTarget,
+    borderRadius: radius.pill,
+  },
+  tabSelected: {
+    backgroundColor: colors.accent,
+  },
+  tabPressed: {
+    backgroundColor: colors.surfaceRaised,
+  },
+  tabBadge: {
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: 6,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.accent,
+  },
+  tabBadgeSelected: {
+    backgroundColor: colors.onAccent,
+  },
+  emptyIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.accentDim,
   },
   center: {
     textAlign: 'center',
@@ -524,15 +646,6 @@ const styles = StyleSheet.create({
     borderRadius: touchTarget / 2,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  unread: {
-    minWidth: 22,
-    height: 22,
-    paddingHorizontal: 6,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.accent,
   },
   fight: {
     flexDirection: 'row',
