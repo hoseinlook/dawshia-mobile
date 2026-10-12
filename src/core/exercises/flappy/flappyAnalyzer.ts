@@ -18,6 +18,15 @@ const MAX_ARM_RATIO = 2.5;
 const CALIBRATION_DECAY_PER_S = 0.01;
 /** Standing / kneeling upright: hips this many shoulder widths below the shoulders. */
 const UPRIGHT_HIP_DROP = 1.3;
+/**
+ * Leaving the plank only counts after this long: a single missed frame (a hand
+ * not detected, motion blur at the bottom of a push-up) must not end the game.
+ */
+export const FLAPPY_PLANK_GRACE_MS = 1000;
+/** Shoulders may drop this far (shoulder widths) below the hands' level and still count as the plank. */
+const HANDS_LEVEL_TOLERANCE = 0.3;
+/** Remembered hand position (the hands stay on the floor) is used this long when the wrists aren't detected. */
+const HANDS_MEMORY_MS = 5000;
 
 const CUES = {
   notVisible: { code: 'notVisible', severity: 'warning' },
@@ -41,10 +50,22 @@ export class FlappyAnalyzer implements ExerciseAnalyzer {
   /** Shoulder-above-wrist distance with straight arms (px), learned while playing. */
   private top: number | null = null;
   private lastMs: number | null = null;
+  /** Hands' height on the floor (px), last time they were seen in the plank. */
+  private hands: { y: number; atMs: number } | null = null;
+  /** Last time the plank was seen, and the bird height then. */
+  private lastPlankMs: number | null = null;
+  private lastBirdY: number | null = null;
 
   update(pose: Pose | null, timestampMs: number): ExerciseUpdate {
     const metrics: Record<string, number> = {};
-    const off = (cue: FormCue): ExerciseUpdate => ({ inPosition: false, phase: 'off', events: [], cues: [cue], metrics });
+    const off = (cue: FormCue): ExerciseUpdate => {
+      // Within the grace period the bird keeps its height and the plank still counts.
+      if (this.lastPlankMs !== null && timestampMs - this.lastPlankMs < FLAPPY_PLANK_GRACE_MS) {
+        if (this.lastBirdY !== null) metrics.birdY = this.lastBirdY;
+        return { inPosition: true, phase: 'flying', events: [], cues: [], metrics };
+      }
+      return { inPosition: false, phase: 'off', events: [], cues: [cue], metrics };
+    };
     if (!pose) return off(CUES.notVisible);
 
     const px = (name: KeypointName) => {
@@ -55,26 +76,31 @@ export class FlappyAnalyzer implements ExerciseAnalyzer {
     const rs = px('rightShoulder');
     const lw = px('leftWrist');
     const rw = px('rightWrist');
-    if (!ls || !rs || (!lw && !rw)) return off(CUES.notVisible);
+    if (!ls || !rs) return off(CUES.notVisible);
 
     const shoulderY = (ls.y + rs.y) / 2;
     const shoulderWidth = Math.hypot(ls.x - rs.x, ls.y - rs.y);
     if (shoulderWidth < 1) return off(CUES.notVisible);
+    // The hands don't move during the game: when they aren't detected, use where they were.
     const wrists = [lw, rw].filter((w) => w !== null);
-    const wristY = wrists.reduce((sum, w) => sum + w.y, 0) / wrists.length;
+    const recentHands = this.hands !== null && timestampMs - this.hands.atMs < HANDS_MEMORY_MS ? this.hands.y : null;
+    const wristY = wrists.length ? wrists.reduce((sum, w) => sum + w.y, 0) / wrists.length : recentHands;
+    if (wristY === null) return off(CUES.notVisible);
 
     // Standing or kneeling upright: hips far below the shoulders. In a plank seen
     // from the front the hips are behind the shoulders (hidden or close to them).
     const hips = [px('leftHip'), px('rightHip')].filter((h) => h !== null);
     const hipDrop = hips.length ? hips.reduce((sum, h) => sum + h.y, 0) / hips.length - shoulderY : 0;
     const upright = hipDrop > UPRIGHT_HIP_DROP * shoulderWidth;
-    // Hands must be on the floor below the shoulders.
-    const handsDown = wristY > shoulderY;
+    // Hands on the floor below the shoulders; at the bottom of a push-up the
+    // shoulders come down to about the height of the hands.
+    const handsDown = wristY > shoulderY - HANDS_LEVEL_TOLERANCE * shoulderWidth;
     const inPlank = !upright && handsDown;
 
     const gap = this.gapSmoother.update(Math.max(0, wristY - shoulderY), timestampMs) ?? 0;
     const dt = this.lastMs === null ? 0 : Math.max(0, timestampMs - this.lastMs) / 1000;
     this.lastMs = timestampMs;
+    if (inPlank && wrists.length) this.hands = { y: wristY, atMs: timestampMs };
     if (inPlank) {
       const decayed = this.top === null ? gap : this.top * (1 - CALIBRATION_DECAY_PER_S * dt);
       this.top = Math.min(MAX_ARM_RATIO * shoulderWidth, Math.max(gap, decayed, MIN_ARM_RATIO * shoulderWidth));
@@ -84,17 +110,14 @@ export class FlappyAnalyzer implements ExerciseAnalyzer {
 
     metrics.armRatio = Math.round(ratio * 100) / 100;
     metrics.birdY = birdYFromRatio(ratio);
-    return {
-      inPosition: inPlank,
-      phase: inPlank ? 'flying' : 'off',
-      events: [],
-      cues: inPlank ? [] : [CUES.getInPlank],
-      metrics,
-    };
+    if (!inPlank) return off(CUES.getInPlank);
+    this.lastPlankMs = timestampMs;
+    this.lastBirdY = metrics.birdY;
+    return { inPosition: true, phase: 'flying', events: [], cues: [], metrics };
   }
 
   reset(): void {
-    // Keep the calibration from the setup phase; only the smoothing restarts.
+    // Keep the calibration, the hands and the grace period from the setup phase; only the smoothing restarts.
     this.gapSmoother.reset();
     this.lastMs = null;
   }

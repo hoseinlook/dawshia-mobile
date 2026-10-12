@@ -1,5 +1,5 @@
 import { frontPushupPose } from '../../pose/testing/syntheticPose';
-import { FlappyAnalyzer } from './flappyAnalyzer';
+import { FLAPPY_PLANK_GRACE_MS, FlappyAnalyzer } from './flappyAnalyzer';
 
 /** Feeds ~30 fps frames at a fixed depth and returns the last update. */
 function hold(a: FlappyAnalyzer, depth: number, fromMs: number, toMs: number, scale = 1) {
@@ -50,5 +50,41 @@ describe('FlappyAnalyzer (face to face)', () => {
 
   it('asks to be visible when the shoulders are not seen', () => {
     expect(new FlappyAnalyzer().update(null, 0).cues[0].code).toBe('notVisible');
+  });
+
+  it('keeps the plank and the bird height through a few lost frames', () => {
+    const a = new FlappyAnalyzer();
+    const before = hold(a, 0.5, 0, 500);
+    const lost = a.update(null, 600);
+    expect(lost.inPosition).toBe(true);
+    expect(lost.metrics.birdY).toBeCloseTo(before.metrics.birdY, 5);
+    expect(a.update(null, 500 + FLAPPY_PLANK_GRACE_MS + 50).inPosition).toBe(false);
+  });
+
+  it('uses the remembered hands when the wrists are not detected', () => {
+    const a = new FlappyAnalyzer();
+    hold(a, 0, 0, 500);
+    let u = a.update(frontPushupPose({ depth: 1, timestampMs: 2000 }), 2000);
+    for (let t = 2033; t < 2500; t += 33) {
+      const pose = frontPushupPose({ depth: 1, timestampMs: t });
+      pose.keypoints.leftWrist.score = 0;
+      pose.keypoints.rightWrist.score = 0;
+      u = a.update(pose, t);
+    }
+    expect(u.inPosition).toBe(true);
+    expect(u.metrics.birdY).toBeGreaterThan(0.8);
+  });
+
+  it('leaves the plank after standing up for longer than the grace period', () => {
+    const a = new FlappyAnalyzer();
+    hold(a, 0, 0, 500);
+    let u = a.update(frontPushupPose({ depth: 0, standing: true, timestampMs: 533 }), 533);
+    expect(u.inPosition).toBe(true);
+    u = a.update(
+      frontPushupPose({ depth: 0, standing: true, timestampMs: 500 + FLAPPY_PLANK_GRACE_MS + 50 }),
+      500 + FLAPPY_PLANK_GRACE_MS + 50,
+    );
+    expect(u.inPosition).toBe(false);
+    expect(u.cues[0].code).toBe('getInPlank');
   });
 });

@@ -6,8 +6,11 @@ import type { Keypoints, Pose } from '../../core/pose/types';
 import { decodeMoveNet, MOVENET_INPUT_BYTES } from './detectors/moveNet';
 import { usePoseEngine } from './poseEngine';
 
-/** Average keypoint confidence below which we report "no person". */
+/** Average keypoint confidence below which we report "no person"… */
 const MIN_POSE_SCORE = 0.2;
+/** …unless this many keypoints are confident on their own (e.g. a front plank hides the legs). */
+const MIN_CONFIDENT_KEYPOINTS = 6;
+const CONFIDENT_SCORE = 0.3;
 
 export type PoseDetectionStatus = 'loading' | 'ready' | 'error';
 
@@ -34,16 +37,9 @@ export function usePoseDetection(onPose: (pose: Pose | null) => void): PoseDetec
     onPoseRef.current = onPose;
   }, [onPose]);
 
-  const emit = useCallback(
-    (keypoints: Keypoints | null, frameWidth: number, frameHeight: number) => {
-      onPoseRef.current(
-        keypoints === null
-          ? null
-          : { keypoints, frameWidth, frameHeight, timestampMs: Date.now() },
-      );
-    },
-    [],
-  );
+  const emit = useCallback((keypoints: Keypoints | null, frameWidth: number, frameHeight: number) => {
+    onPoseRef.current(keypoints === null ? null : { keypoints, frameWidth, frameHeight, timestampMs: Date.now() });
+  }, []);
 
   const tflite = engine.engine?.model;
   const gpuResizer = engine.engine?.resizer;
@@ -72,8 +68,14 @@ export function usePoseDetection(onPose: (pose: Pose | null) => void): PoseDetec
         const keypoints = decodeMoveNet(new Float32Array(outputs[0]), frameWidth, frameHeight);
 
         let scoreSum = 0;
-        for (const name in keypoints) scoreSum += keypoints[name as keyof Keypoints].score;
-        const visible = scoreSum / Object.keys(keypoints).length >= MIN_POSE_SCORE;
+        let confident = 0;
+        for (const name in keypoints) {
+          const score = keypoints[name as keyof Keypoints].score;
+          scoreSum += score;
+          if (score >= CONFIDENT_SCORE) confident++;
+        }
+        const visible =
+          scoreSum / Object.keys(keypoints).length >= MIN_POSE_SCORE || confident >= MIN_CONFIDENT_KEYPOINTS;
 
         scheduleOnRN(emit, visible ? keypoints : null, frameWidth, frameHeight);
       } finally {

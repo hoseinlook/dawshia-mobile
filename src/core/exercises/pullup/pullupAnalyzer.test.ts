@@ -56,4 +56,27 @@ describe('PullupAnalyzer', () => {
     expect(update.inPosition).toBe(true);
     expect(update.metrics.elbowAngle).toBeCloseTo(170, 0);
   });
+
+  it('counts reps with the phone on the floor: hands, bar and hips out of the frame', () => {
+    const hidden = ['leftWrist', 'rightWrist', 'leftHip', 'rightHip', 'leftKnee', 'rightKnee'] as const;
+    const { reps, reasons } = run(
+      poseStream((a, t) => frontHangPose({ elbowAngle: a, hidden, timestampMs: t }), [170, 40, 170, 40, 170], 700),
+    );
+    expect(reps).toHaveLength(2);
+    expect(reasons).toEqual([]);
+  });
+
+  it('stays on the bar when the athlete leaves the frame for a moment at the top', () => {
+    const poses = poseStream(hang, [170, 40, 170], 700).map((p, i, all) =>
+      Math.abs(i - Math.floor(all.length / 2)) <= 1 ? null : p,
+    );
+    const analyzer = new PullupAnalyzer();
+    let t = 0;
+    const events: ExerciseEvent[] = [];
+    for (const pose of poses) {
+      t = pose?.timestampMs ?? t + 33;
+      events.push(...analyzer.update(pose, t).events);
+    }
+    expect(events.filter((e) => e.type === 'rep')).toHaveLength(1);
+  });
 });

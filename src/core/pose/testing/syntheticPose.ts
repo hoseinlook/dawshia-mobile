@@ -1,4 +1,4 @@
-import { KEYPOINT_NAMES, type Keypoints, type Pose } from '../types';
+import { KEYPOINT_NAMES, type KeypointName, type Keypoints, type Pose } from '../types';
 
 /**
  * Builds synthetic side-view poses for unit tests (no camera needed).
@@ -19,29 +19,18 @@ export interface SideViewOptions {
   timestampMs?: number;
 }
 
-export function sideViewPose({
-  elbowAngle,
-  hipOffset = 0,
-  shoulderLift = 0,
-  timestampMs = 0,
-}: SideViewOptions): Pose {
+export function sideViewPose({ elbowAngle, hipOffset = 0, shoulderLift = 0, timestampMs = 0 }: SideViewOptions): Pose {
   const px: Partial<Record<(typeof KEYPOINT_NAMES)[number], [number, number]>> = {};
 
   const ankle: [number, number] = [1000, 420];
   const shoulder: [number, number] = [500, 420 - shoulderLift];
-  const hip: [number, number] = [
-    (shoulder[0] + ankle[0]) / 2,
-    (shoulder[1] + ankle[1]) / 2 + hipOffset,
-  ];
+  const hip: [number, number] = [(shoulder[0] + ankle[0]) / 2, (shoulder[1] + ankle[1]) / 2 + hipOffset];
   const knee: [number, number] = [(hip[0] + ankle[0]) / 2, (hip[1] + ankle[1]) / 2];
 
   // Isosceles arm: wrist straight below the shoulder, elbow bent outward.
   const half = (elbowAngle * Math.PI) / 360;
   const wrist: [number, number] = [shoulder[0], shoulder[1] + 2 * ARM_SEGMENT * Math.sin(half)];
-  const elbow: [number, number] = [
-    shoulder[0] - ARM_SEGMENT * Math.cos(half),
-    (shoulder[1] + wrist[1]) / 2,
-  ];
+  const elbow: [number, number] = [shoulder[0] - ARM_SEGMENT * Math.cos(half), (shoulder[1] + wrist[1]) / 2];
 
   for (const side of ['left', 'right'] as const) {
     px[`${side}Shoulder`] = shoulder;
@@ -97,6 +86,8 @@ export interface FrontHangOptions {
   elbowAngle: number;
   /** Feet on the floor / standing: hands below the shoulders. */
   standing?: boolean;
+  /** Keypoints out of the frame (score 0), e.g. the hands when the phone stands on the floor. */
+  hidden?: readonly KeypointName[];
   timestampMs?: number;
 }
 
@@ -111,7 +102,7 @@ const BAR_Y = 200;
  * Front-view pull-up pose in a portrait frame: hands on a bar at y=200 px,
  * body hanging below. Smaller elbow angles pull the head higher.
  */
-export function frontHangPose({ elbowAngle, standing = false, timestampMs = 0 }: FrontHangOptions): Pose {
+export function frontHangPose({ elbowAngle, standing = false, hidden = [], timestampMs = 0 }: FrontHangOptions): Pose {
   const half = (elbowAngle * Math.PI) / 360;
   const drop = 2 * HANG_ARM * Math.sin(half);
   const px: Partial<Record<(typeof KEYPOINT_NAMES)[number], [number, number]>> = {};
@@ -139,7 +130,7 @@ export function frontHangPose({ elbowAngle, standing = false, timestampMs = 0 }:
   const keypoints = {} as Keypoints;
   for (const name of KEYPOINT_NAMES) {
     const [x, y] = px[name] ?? [0, 0];
-    keypoints[name] = { x: x / HANG_FRAME_W, y: y / HANG_FRAME_H, score: 0.9 };
+    keypoints[name] = { x: x / HANG_FRAME_W, y: y / HANG_FRAME_H, score: hidden.includes(name) ? 0 : 0.9 };
   }
   return { keypoints, frameWidth: HANG_FRAME_W, frameHeight: HANG_FRAME_H, timestampMs };
 }
@@ -220,7 +211,13 @@ export interface HandstandOptions {
 }
 
 /** Side-ish view of a handstand in a portrait frame (hands on the floor at y=1150). */
-export function handstandPose({ elbowAngle = 175, headOffset = 90, lean = 0, standing = false, timestampMs = 0 }: HandstandOptions = {}): Pose {
+export function handstandPose({
+  elbowAngle = 175,
+  headOffset = 90,
+  lean = 0,
+  standing = false,
+  timestampMs = 0,
+}: HandstandOptions = {}): Pose {
   const px: Partial<Record<(typeof KEYPOINT_NAMES)[number], [number, number]>> = {};
   const floor = 1150;
   const half = (elbowAngle * Math.PI) / 360;
@@ -290,7 +287,15 @@ function sideViewFrom(points: Record<string, [number, number]>, timestampMs: num
 export function dipPose(elbowAngle: number, timestampMs = 0, lying = false): Pose {
   if (lying) {
     return sideViewFrom(
-      { shoulder: [200, 900], elbow: [200, 1000], wrist: [200, 1100], hip: [450, 900], knee: [600, 900], ankle: [750, 900], nose: [110, 900] },
+      {
+        shoulder: [200, 900],
+        elbow: [200, 1000],
+        wrist: [200, 1100],
+        hip: [450, 900],
+        knee: [600, 900],
+        ankle: [750, 900],
+        nose: [110, 900],
+      },
       timestampMs,
     );
   }
@@ -388,7 +393,10 @@ export function frontPushupPose({ depth, standing = false, scale = 1, timestampM
 
   if (standing) {
     const shoulderY = 400;
-    for (const [side, dir] of [['left', -1], ['right', 1]] as const) {
+    for (const [side, dir] of [
+      ['left', -1],
+      ['right', 1],
+    ] as const) {
       px[`${side}Shoulder`] = [cx + dir * half, shoulderY];
       px[`${side}Elbow`] = [cx + dir * (half + 10), shoulderY + 150 * scale];
       px[`${side}Wrist`] = [cx + dir * (half + 15), shoulderY + 280 * scale];
@@ -398,7 +406,10 @@ export function frontPushupPose({ depth, standing = false, scale = 1, timestampM
     }
   } else {
     const shoulderY = wristY - arm * (1 - 0.8 * depth);
-    for (const [side, dir] of [['left', -1], ['right', 1]] as const) {
+    for (const [side, dir] of [
+      ['left', -1],
+      ['right', 1],
+    ] as const) {
       px[`${side}Shoulder`] = [cx + dir * half, shoulderY];
       px[`${side}Elbow`] = [cx + dir * (half + 60 * scale * depth + 10), (shoulderY + wristY) / 2];
       px[`${side}Wrist`] = [cx + dir * (half + 20), wristY];
