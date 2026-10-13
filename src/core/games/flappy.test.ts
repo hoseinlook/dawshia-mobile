@@ -16,13 +16,25 @@ describe('flappy course', () => {
     expect(pipeAt(1, 1000, 0).gapSize).toBe(FLAPPY.gapMin);
   });
 
+  it('keeps each gap within reach of the previous one', () => {
+    for (const seed of [1, 7, 99, 12345]) {
+      for (let i = 1; i < 200; i++) {
+        const prev = pipeAt(seed, i - 1, 0).gapCenter;
+        const cur = pipeAt(seed, i, 0).gapCenter;
+        expect(Math.abs(cur - prev)).toBeLessThanOrEqual(FLAPPY.gapCenterStep + 1e-9);
+        expect(cur).toBeGreaterThanOrEqual(FLAPPY.gapCenterMin);
+        expect(cur).toBeLessThanOrEqual(FLAPPY.gapCenterMax);
+      }
+    }
+  });
+
   it('scrolls pipes left and counts the ones passed', () => {
     expect(pipesPassed(0)).toBe(0);
     expect(visiblePipes(1, 0).length).toBeGreaterThan(0);
-    // After 60 s the field moved 15 widths: roughly 25 pipes passed.
+    // After 60 s the field moved 12.6 widths: roughly 21 pipes passed.
     const passed = pipesPassed(60_000);
-    expect(passed).toBeGreaterThan(20);
-    expect(passed).toBeLessThan(30);
+    expect(passed).toBeGreaterThan(17);
+    expect(passed).toBeLessThan(25);
     // Monotonic.
     let last = 0;
     for (let t = 0; t < 30_000; t += 250) {
@@ -55,6 +67,21 @@ describe('FlappyGame', () => {
     for (let t = 0; t <= 30_000 && !state.crashed; t += 33) state = game.step(t, 0.05, true);
     expect(state).toMatchObject({ crashed: true, reason: 'pipe' });
     expect(collides(99, 0, 0.5)).toBe(false); // nothing to hit at the start
+  });
+
+  it('forgives a short touch of a pipe (a detection glitch) but not a longer one', () => {
+    const seed = 99;
+    // When the first pipe reaches the bird.
+    let t = 0;
+    while (!collides(seed, t, 0.01)) t += 10;
+    const center = pipeAt(seed, 0, t).gapCenter;
+    const game = new FlappyGame(seed);
+    game.step(t - 100, center, true);
+    expect(game.step(t, 0.01, true).crashed).toBe(false);
+    expect(game.step(t + 100, 0.01, true).crashed).toBe(false);
+    expect(game.step(t + 133, center, true).crashed).toBe(false); // back in the gap: forgiven
+    game.step(t + 166, 0.01, true);
+    expect(game.step(t + 166 + FLAPPY.crashAfterMs, 0.01, true)).toMatchObject({ crashed: true, reason: 'pipe' });
   });
 
   it('ends the game when the athlete leaves the plank', () => {

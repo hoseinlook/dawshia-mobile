@@ -6,11 +6,23 @@ const MIN_SCORE = 0.3;
 
 /**
  * Shoulder height above the hands, as a fraction of the calibrated top
- * position: at or above TOP_RATIO the bird is at the top, at or below
- * BOTTOM_RATIO it is at the bottom.
+ * position: at or above TOP_RATIO the bird is at the top; at or below the
+ * learned bottom (+ BOTTOM_MARGIN) it is at the bottom.
  */
 export const FLAPPY_TOP_RATIO = 0.85;
-export const FLAPPY_BOTTOM_RATIO = 0.35;
+/**
+ * How low a full push-up looks depends on the camera height and the hand
+ * placement (0.25–0.65 of the top in real videos), so the bottom is learned:
+ * it starts at BOTTOM_START, follows the deepest push-up seen (down to
+ * BOTTOM_MIN) and slowly drifts back up (to BOTTOM_MAX) when the push-ups are
+ * shallower than that, so everyone can reach the whole field.
+ */
+export const FLAPPY_BOTTOM_START = 0.5;
+const BOTTOM_MIN = 0.2;
+const BOTTOM_MAX = 0.6;
+const BOTTOM_DRIFT_PER_S = 0.02;
+/** The bird reaches the bottom this much (ratio) before the deepest point, so it isn't only touched for a frame. */
+const BOTTOM_MARGIN = 0.05;
 /** The calibrated top (arms straight) is kept within these multiples of the shoulder width. */
 const MIN_ARM_RATIO = 0.7;
 const MAX_ARM_RATIO = 2.5;
@@ -49,6 +61,8 @@ export class FlappyAnalyzer implements ExerciseAnalyzer {
   private readonly gapSmoother = new SignalSmoother(0.5);
   /** Shoulder-above-wrist distance with straight arms (px), learned while playing. */
   private top: number | null = null;
+  /** Learned bottom of a push-up, as a ratio of `top`. */
+  private bottom = FLAPPY_BOTTOM_START;
   private lastMs: number | null = null;
   /** Hands' height on the floor (px), last time they were seen in the plank. */
   private hands: { y: number; atMs: number } | null = null;
@@ -107,9 +121,13 @@ export class FlappyAnalyzer implements ExerciseAnalyzer {
     }
     const top = this.top ?? Math.max(gap, MIN_ARM_RATIO * shoulderWidth);
     const ratio = gap / top;
+    if (inPlank) {
+      this.bottom = Math.max(BOTTOM_MIN, Math.min(ratio, this.bottom + BOTTOM_DRIFT_PER_S * dt, BOTTOM_MAX));
+    }
 
     metrics.armRatio = Math.round(ratio * 100) / 100;
-    metrics.birdY = birdYFromRatio(ratio);
+    metrics.bottomRatio = Math.round(this.bottom * 100) / 100;
+    metrics.birdY = birdYFromRatio(ratio, this.bottom);
     if (!inPlank) return off(CUES.getInPlank);
     this.lastPlankMs = timestampMs;
     this.lastBirdY = metrics.birdY;
@@ -117,14 +135,14 @@ export class FlappyAnalyzer implements ExerciseAnalyzer {
   }
 
   reset(): void {
-    // Keep the calibration, the hands and the grace period from the setup phase; only the smoothing restarts.
+    // Keep the calibration (top and bottom), the hands and the grace period from the setup phase; only the smoothing restarts.
     this.gapSmoother.reset();
     this.lastMs = null;
   }
 }
 
-/** Bird height from the shoulder height ratio: arms straight = high, chest at the floor = low. */
-export function birdYFromRatio(ratio: number): number {
-  const t = (FLAPPY_TOP_RATIO - ratio) / (FLAPPY_TOP_RATIO - FLAPPY_BOTTOM_RATIO); // 0 top … 1 bottom
+/** Bird height from the shoulder height ratio: arms straight = high, at the (learned) bottom = low. */
+export function birdYFromRatio(ratio: number, bottom = FLAPPY_BOTTOM_START): number {
+  const t = (FLAPPY_TOP_RATIO - ratio) / (FLAPPY_TOP_RATIO - bottom - BOTTOM_MARGIN); // 0 top … 1 bottom
   return 0.12 + Math.max(0, Math.min(1, t)) * 0.76;
 }

@@ -15,15 +15,39 @@ describe('FlappyAnalyzer (face to face)', () => {
     expect(top.inPosition).toBe(true);
     expect(top.metrics.birdY).toBeLessThan(0.2);
 
-    const middle = hold(a, 0.5, 500, 1000);
-    expect(middle.metrics.birdY).toBeGreaterThan(0.35);
-    expect(middle.metrics.birdY).toBeLessThan(0.65);
-
-    const bottom = hold(a, 1, 1000, 1500);
+    const bottom = hold(a, 1, 500, 1000);
     expect(bottom.inPosition).toBe(true);
     expect(bottom.metrics.birdY).toBeGreaterThan(0.8);
 
+    // Halfway down a full push-up = the middle of the field.
+    const middle = hold(a, 0.5, 1000, 1500);
+    expect(middle.metrics.birdY).toBeGreaterThan(0.35);
+    expect(middle.metrics.birdY).toBeLessThan(0.65);
+
     expect(hold(a, 0, 1500, 2000).metrics.birdY).toBeLessThan(0.2);
+  });
+
+  it('reaches the bottom when full push-ups look shallow to the camera', () => {
+    // A phone above the floor sees the shoulders drop to only ~60% of the top.
+    const a = new FlappyAnalyzer();
+    let lowest = 0;
+    for (let rep = 0; rep < 3; rep++) {
+      hold(a, 0, rep * 2000, rep * 2000 + 1000);
+      lowest = hold(a, 0.5, rep * 2000 + 1000, rep * 2000 + 2000).metrics.birdY;
+    }
+    expect(lowest).toBeGreaterThan(0.8);
+  });
+
+  it('learns the bottom back up when push-ups stop being as deep', () => {
+    const a = new FlappyAnalyzer();
+    hold(a, 0, 0, 500);
+    hold(a, 1, 500, 1000); // one very deep rep
+    let u = hold(a, 0, 1000, 2000);
+    for (let rep = 0; rep < 10; rep++) {
+      hold(a, 0, 2000 + rep * 2000, 3000 + rep * 2000);
+      u = hold(a, 0.6, 3000 + rep * 2000, 4000 + rep * 2000);
+    }
+    expect(u.metrics.birdY).toBeGreaterThan(0.8);
   });
 
   it('works at any distance from the phone', () => {

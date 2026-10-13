@@ -10,20 +10,26 @@ export const FLAPPY = {
   /** Horizontal bird position. */
   birdX: 0.28,
   birdRadius: 0.035,
+  /** Collisions use a slightly smaller bird than the one drawn, so grazing a pipe doesn't end the game. */
+  hitRadius: 0.025,
   pipeWidth: 0.11,
   /** Distance between pipes. */
   spacing: 0.55,
-  /** Field widths per second. */
-  speed: 0.25,
-  /** First pipe starts off-screen, giving ~3 s to settle into the plank. */
+  /** Field widths per second: a pipe every ~2.6 s, time for one slow push-up. */
+  speed: 0.21,
+  /** First pipe starts off-screen, giving ~4 s to settle into the plank. */
   firstPipeX: 1.1,
   /** Gap height: starts wide, shrinks with every pipe, never below the minimum. */
-  gapStart: 0.42,
-  gapShrink: 0.008,
-  gapMin: 0.26,
+  gapStart: 0.5,
+  gapShrink: 0.006,
+  gapMin: 0.32,
   /** Gap centers stay away from the very top/bottom. */
   gapCenterMin: 0.3,
   gapCenterMax: 0.7,
+  /** A gap is at most this far (up or down) from the previous one, so no pipe asks for a full push-up and a lockout at once. */
+  gapCenterStep: 0.25,
+  /** The bird must touch a pipe this long to crash: a one-frame detection glitch doesn't end the game. */
+  crashAfterMs: 200,
 } as const;
 
 /** Deterministic pseudo-random number in [0, 1) for pipe `i` of course `seed` (mulberry32). */
@@ -42,13 +48,32 @@ export interface Pipe {
   gapSize: number;
 }
 
+/** Gap centers of course `seed`, built pipe by pipe (each one near the previous) and cached. */
+const centerCache = new Map<number, number[]>();
+
+function gapCenter(seed: number, index: number): number {
+  let centers = centerCache.get(seed);
+  if (!centers) {
+    if (centerCache.size > 8) centerCache.clear();
+    centers = [];
+    centerCache.set(seed, centers);
+  }
+  while (centers.length <= index) {
+    const i = centers.length;
+    const prev = i === 0 ? (FLAPPY.gapCenterMin + FLAPPY.gapCenterMax) / 2 : centers[i - 1];
+    const lo = Math.max(FLAPPY.gapCenterMin, prev - FLAPPY.gapCenterStep);
+    const hi = Math.min(FLAPPY.gapCenterMax, prev + FLAPPY.gapCenterStep);
+    centers.push(lo + seededRandom(seed, i) * (hi - lo));
+  }
+  return centers[index];
+}
+
 export function pipeAt(seed: number, index: number, elapsedMs: number): Pipe {
   const gapSize = Math.max(FLAPPY.gapMin, FLAPPY.gapStart - index * FLAPPY.gapShrink);
-  const span = FLAPPY.gapCenterMax - FLAPPY.gapCenterMin;
   return {
     index,
     x: FLAPPY.firstPipeX + index * FLAPPY.spacing - (FLAPPY.speed * elapsedMs) / 1000,
-    gapCenter: FLAPPY.gapCenterMin + seededRandom(seed, index) * span,
+    gapCenter: gapCenter(seed, index),
     gapSize,
   };
 }
@@ -78,11 +103,11 @@ export function pipesPassed(elapsedMs: number): number {
 /** Whether the bird at height `birdY` hits a pipe at this moment. */
 export function collides(seed: number, elapsedMs: number, birdY: number): boolean {
   for (const pipe of visiblePipes(seed, elapsedMs)) {
-    const overlapX = Math.abs(pipe.x - FLAPPY.birdX) < FLAPPY.pipeWidth / 2 + FLAPPY.birdRadius;
+    const overlapX = Math.abs(pipe.x - FLAPPY.birdX) < FLAPPY.pipeWidth / 2 + FLAPPY.hitRadius;
     if (!overlapX) continue;
     const top = pipe.gapCenter - pipe.gapSize / 2;
     const bottom = pipe.gapCenter + pipe.gapSize / 2;
-    if (birdY - FLAPPY.birdRadius < top || birdY + FLAPPY.birdRadius > bottom) return true;
+    if (birdY - FLAPPY.hitRadius < top || birdY + FLAPPY.hitRadius > bottom) return true;
   }
   return false;
 }
@@ -100,6 +125,8 @@ export interface FlappyState {
  */
 export class FlappyGame {
   private state: FlappyState = { points: 0, crashed: false, reason: null };
+  /** Since when the bird has been touching a pipe. */
+  private touchingSinceMs: number | null = null;
 
   constructor(private readonly seed: number) {}
 
@@ -112,8 +139,12 @@ export class FlappyGame {
     if (!inPlank) {
       this.state = { ...this.state, crashed: true, reason: 'plank' };
     } else if (collides(this.seed, elapsedMs, birdY)) {
-      this.state = { ...this.state, crashed: true, reason: 'pipe' };
+      this.touchingSinceMs ??= elapsedMs;
+      if (elapsedMs - this.touchingSinceMs >= FLAPPY.crashAfterMs) {
+        this.state = { ...this.state, crashed: true, reason: 'pipe' };
+      }
     } else {
+      this.touchingSinceMs = null;
       this.state = { ...this.state, points: pipesPassed(elapsedMs) };
     }
     return this.state;
