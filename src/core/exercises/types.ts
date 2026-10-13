@@ -55,6 +55,8 @@ export interface CameraSetup {
   orientation: 'landscape' | 'portrait';
   /** Which side of the athlete should face the camera. */
   view: 'side' | 'front';
+  /** The athlete is upside down (handstands): the detector also reads the frame rotated 180°. */
+  upsideDown?: boolean;
 }
 
 /**

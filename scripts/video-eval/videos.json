@@ -1,0 +1,510 @@
+[
+  {
+    "file": "pushup/pexels-side-1.mp4",
+    "movement": "pushup",
+    "source": "https://www.pexels.com/video/4964650/",
+    "download": "https://videos.pexels.com/video-files/4964650/4964650-hd_1920_1080_25fps.mp4",
+    "license": "Pexels License",
+    "width": 1920,
+    "height": 1080,
+    "fps": 25.0,
+    "durationS": 20.64,
+    "view": "side",
+    "expectedReps": 5,
+    "expectedHoldS": null,
+    "activeRange": [
+      0,
+      20.6
+    ],
+    "notes": "True side profile, camera ~floor level/slightly above, whole body head-to-feet in frame, tripod, outdoor street-workout park. Clip starts in the bottom position; bottoms ~0-1.2, 3.2-4.4, 6.8-8, 10-11.6, 13.6-15.6, 18-19.2 s; tops ~2, 5.5, 9, 12.4, 16.5, 20 s. 6 full reps (count could be 5 if the opening bottom-from-start is not counted). Fairly fast, shallow-ish lockout on some reps.",
+    "verified": "Checked frame by frame: the clip starts at the bottom, so the first push is only half a rep; then 5 full reps (5.2, 8.7, 12.4, 16, 19.8 s)."
+  },
+  {
+    "file": "pushup/pexels-angled-2.mp4",
+    "movement": "pushup",
+    "source": "https://www.pexels.com/video/6022762/",
+    "download": "https://videos.pexels.com/video-files/6022762/6022762-uhd_3840_2160_25fps.mp4",
+    "license": "Pexels License",
+    "width": 1280,
+    "height": 720,
+    "fps": 25.0,
+    "durationS": 15.76,
+    "view": "angled",
+    "expectedReps": 5,
+    "expectedHoldS": null,
+    "activeRange": [
+      4.5,
+      15.7
+    ],
+    "notes": "3/4 front-side view (not pure profile), tripod, outdoor. Athlete with a prosthetic leg on push-up handles. 0-4.5 s he walks hands out to plank (no reps). ~5 reps, bottoms ~5.5, 7.5, 9.3, 11.5, 14.0 s. Feet at left edge, whole body visible."
+  },
+  {
+    "file": "pushup/pexels-side-closeup-3.mp4",
+    "movement": "pushup",
+    "source": "https://www.pexels.com/video/4921654/",
+    "download": "https://videos.pexels.com/video-files/4921654/4921654-hd_1066_1920_25fps.mp4",
+    "license": "Pexels License",
+    "width": 1066,
+    "height": 1920,
+    "fps": 25.0,
+    "durationS": 9.88,
+    "view": "side",
+    "expectedReps": 5,
+    "expectedHoldS": null,
+    "activeRange": [
+      0,
+      9.9
+    ],
+    "notes": "Side profile, portrait 9:16, close framing: head/torso/arms visible but legs/feet are OUT of frame (tests partial body). Gym, tripod. Bottoms ~0-0.5, 2.0-2.5, 4.0, 6.0, 7.9, 9.6 s; 5 full bottom->top cycles, clip ends at a bottom.",
+    "offSetup": "Legs and feet out of frame; the app needs head to feet on screen."
+  },
+  {
+    "file": "pullup/pexels-front-1.mp4",
+    "movement": "pullup",
+    "source": "https://www.pexels.com/video/35585613/",
+    "download": "https://videos.pexels.com/video-files/35585613/15079519_1080_1920_30fps.mp4",
+    "license": "Pexels License",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30.0,
+    "durationS": 8.17,
+    "view": "front",
+    "expectedReps": 2,
+    "expectedHoldS": null,
+    "activeRange": [
+      0,
+      7.5
+    ],
+    "notes": "Athlete facing camera, low-angle tripod, gym, full body visible. Tops (chin over bar) ~1.0, 2.8, 5.4 s; returns to near-full hang between. 3 reps; drops off bar at ~7.6 s. Portrait 9:16, dim light.",
+    "verified": "3 tops, but the first starts mid-air before the clip, so a session counts 2 (from 1.9 s and 4.0 s)."
+  },
+  {
+    "file": "pullup/pexels-front-2.mp4",
+    "movement": "pullup",
+    "source": "https://www.pexels.com/video/31622705/",
+    "download": "https://videos.pexels.com/video-files/31622705/13475126_3840_2160_60fps.mp4",
+    "license": "Pexels License",
+    "width": 1280,
+    "height": 720,
+    "fps": 59.94,
+    "durationS": 18.32,
+    "view": "front",
+    "expectedReps": 4,
+    "expectedHoldS": null,
+    "activeRange": [
+      0,
+      13.0
+    ],
+    "notes": "Facing camera, very low angle (camera on ground looking up), outdoor, tripod. Athlete raises legs forward on each pull so FEET OCCLUDE THE FACE at the top (~0.8, 4.8, 7.6, 11.6 s). 4 reps; 13-16 s dead hang, then drops and walks toward camera. Kip/knee-raise style, may confuse pose.",
+    "offSetup": "Camera on the ground: only the legs are in frame, head and shoulders are above it."
+  },
+  {
+    "file": "pullup/pexels-front-3.mp4",
+    "movement": "pullup",
+    "source": "https://www.pexels.com/video/7187450/",
+    "download": "https://videos.pexels.com/video-files/7187450/7187450-hd_1080_1920_24fps.mp4",
+    "license": "Pexels License",
+    "width": 1080,
+    "height": 1920,
+    "fps": 24.0,
+    "durationS": 19.42,
+    "view": "front",
+    "expectedReps": 7,
+    "expectedHoldS": null,
+    "activeRange": [
+      0,
+      19.4
+    ],
+    "notes": "Front/slightly angled, portrait. NOT a single static shot: edited multi-shot with camera position/zoom changes (~10.5 s and ~16 s). Head and shoulders always visible, full body visible. Tops ~1.0, 2.9, 4.5, 6.3, 8.0, 10.0, 14.0, 16.0, 18.0 s -> 9 reps; long hang ~11-13.5 s. Some reps may not reach full lockout at bottom.",
+    "verified": "9 tops; edited from several shots. The rep at 4.2 s kips up from a third of the way (no full hang) and the last (18.7 s) only reaches chin level after a camera cut: both rightly rejected."
+  },
+  {
+    "file": "pullup/pexels-back-1.mp4",
+    "movement": "pullup",
+    "source": "https://www.pexels.com/video/16692800/",
+    "download": "https://videos.pexels.com/video-files/16692800/16692800-uhd_2160_3840_30fps.mp4",
+    "license": "Pexels License",
+    "width": 720,
+    "height": 1280,
+    "fps": 30.0,
+    "durationS": 24.0,
+    "view": "back",
+    "expectedReps": 5,
+    "expectedHoldS": null,
+    "activeRange": [
+      0,
+      24.0
+    ],
+    "notes": "Back to camera (athlete faces away), tripod, outdoor bar, full body visible but athlete is small in frame (portrait, ~30% of height). Slow controlled reps: tops ~2.0, 5.7, 9.7, 13.7, 18.0, 22.0 s -> 6 reps from dead hang.",
+    "offSetup": "Back to the camera (the app asks the athlete to face it): the face is guessed, so the chin check rejects rep 1. The 6th rep is cut off by the clip end."
+  },
+  {
+    "file": "dip/pexels-side-1.mp4",
+    "movement": "dip",
+    "source": "https://www.pexels.com/video/34543951/",
+    "download": "https://videos.pexels.com/video-files/34543951/14637011_1080_1920_25fps.mp4",
+    "license": "Pexels License",
+    "width": 1080,
+    "height": 1920,
+    "fps": 25.0,
+    "durationS": 12.0,
+    "view": "side",
+    "expectedReps": 5,
+    "expectedHoldS": null,
+    "activeRange": [
+      0,
+      12.0
+    ],
+    "notes": "Side view, portrait, tripod, heavy warm color grading. Dip station; body leans forward with legs extended diagonally back - feet may be touching/near the floor (possibly assisted/leaning dip). Shallow range. Lows ~0.2, 1.8, 4.0, 6.4, 8.5, 10.6 s; ~5 reps, ambiguous +-1.",
+    "offSetup": "Feet-on-floor incline dip, not parallel-bar dips; heavy colour grading, arms barely detected."
+  },
+  {
+    "file": "dip/pexels-side-lowangle-2.mp4",
+    "movement": "dip",
+    "source": "https://www.pexels.com/video/34708298/",
+    "download": "https://videos.pexels.com/video-files/34708298/14711369_2560_1440_25fps.mp4",
+    "license": "Pexels License",
+    "width": 1280,
+    "height": 720,
+    "fps": 25.0,
+    "durationS": 12.84,
+    "view": "side",
+    "expectedReps": 5,
+    "expectedHoldS": null,
+    "activeRange": [
+      0,
+      12.8
+    ],
+    "notes": "Low-angle 3/4 side view from below, dark blue grading, legs mostly out of frame (only torso/arms/head). Gym dip bars. ~5 reps (lows ~0.3, 2.2, 4.1, 6.1, 9.2 s) - rep boundaries hard to see; treat count as approximate +-1.",
+    "offSetup": "Head cropped, very dark blue grading, shot from below."
+  },
+  {
+    "file": "dip/pexels-handheld-3.mp4",
+    "movement": "dip",
+    "source": "https://www.pexels.com/video/17886673/",
+    "download": "https://videos.pexels.com/video-files/17886673/17886673-hd_1920_1080_50fps.mp4",
+    "license": "Pexels License",
+    "width": 1920,
+    "height": 1080,
+    "fps": 50.0,
+    "durationS": 17.84,
+    "view": "angled",
+    "expectedReps": 7,
+    "expectedHoldS": null,
+    "activeRange": [
+      0,
+      17.8
+    ],
+    "notes": "Parallel-bar dips outdoor, knees bent, full depth. HANDHELD camera that orbits around the athlete: side -> front (~6-12 s) -> side/back (~13-17.8 s); stresses view robustness. Bottoms ~1.5, 3.8, 6.4, 8.8, 11.5, 13.9, 16.4 s -> ~7 reps.",
+    "offSetup": "Handheld camera circling the athlete; head often out of frame."
+  },
+  {
+    "file": "muscleup/pexels-front-1.mp4",
+    "movement": "muscleup",
+    "source": "https://www.pexels.com/video/4804760/",
+    "download": "https://videos.pexels.com/video-files/4804760/4804760-uhd_3840_2160_25fps.mp4",
+    "license": "Pexels License",
+    "width": 1280,
+    "height": 720,
+    "fps": 25.0,
+    "durationS": 11.64,
+    "view": "front",
+    "expectedReps": 3,
+    "expectedHoldS": null,
+    "activeRange": [
+      0,
+      11.3
+    ],
+    "notes": "Bar muscle-ups facing camera, low angle tripod, outdoor, full body visible above and below bar. Transitions ~1.0, 4.5, 8.0 s; support/dip at top then lowers to hang each time. 3 reps (slightly kipping). Ends hanging/dropping at ~11.3 s.",
+    "offSetup": "At the top of each rep the head and shoulders go above the frame; the app needs room above the bar."
+  },
+  {
+    "file": "handstandpushup/pexels-front-chairs-1.mp4",
+    "movement": "handstandpushup",
+    "source": "https://www.pexels.com/video/32160957/",
+    "download": "https://videos.pexels.com/video-files/32160957/13713455_1080_1920_25fps.mp4",
+    "license": "Pexels License",
+    "width": 1080,
+    "height": 1920,
+    "fps": 25.0,
+    "durationS": 14.4,
+    "view": "front",
+    "expectedReps": 3,
+    "expectedHoldS": null,
+    "activeRange": [
+      0,
+      13.0
+    ],
+    "notes": "WRONG VIEW: front view (not side). Freestanding handstand push-ups on two chairs in a meadow; athlete is small in frame and far from camera (tripod, portrait). Lows ~3.3, 7.1, 10.4 s, tops ~1.9, 5.5, 8.9, 11.4 s -> 3 full reps; a 4th descent at ~12.8 s ends in a fall-out. No side-view HSPU clip found on Pexels/Pixabay.",
+    "offSetup": "Front view from far away (the app expects a side view); freestanding on chairs."
+  },
+  {
+    "file": "handstand/pexels-side-kickup-3.mp4",
+    "movement": "handstand",
+    "source": "https://www.pexels.com/video/8402114/",
+    "download": "https://videos.pexels.com/video-files/8402114/8402114-hd_1080_1920_30fps.mp4",
+    "license": "Pexels License",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30.0,
+    "durationS": 9.17,
+    "view": "side",
+    "expectedReps": null,
+    "expectedHoldS": 5,
+    "activeRange": [
+      1.5,
+      7.0
+    ],
+    "notes": "True side view, tripod, portrait, woman, urban wall background. Kick-up 1.0-2.75 s, hold ~2.75-6.5 s (~3.7 s, slightly arched/bent hips), comes down 6.75-8 s, then hops away.",
+    "tolerance": 1,
+    "verified": "Balanced from ~1.5 s to ~6.3 s of the extracted range, then legs split coming down; the clip ends while still inverted."
+  },
+  {
+    "file": "handstand/pexels-side-hold-2.mp4",
+    "movement": "handstand",
+    "source": "https://www.pexels.com/video/8859854/",
+    "download": "https://videos.pexels.com/video-files/8859854/8859854-uhd_2160_3840_25fps.mp4",
+    "license": "Pexels License",
+    "width": 720,
+    "height": 1280,
+    "fps": 25.0,
+    "durationS": 15.6,
+    "view": "side",
+    "expectedReps": null,
+    "expectedHoldS": 13.5,
+    "activeRange": [
+      0,
+      15.6
+    ],
+    "notes": "Side view, tripod, portrait, seaside. Kick-up 0-1.5 s, then steady hold ~1.6-15.6 s (clip ends while still in handstand), legs slightly piked/split at the top.",
+    "verified": "Kick-up then a steady hold to the end; needs the 180° rotation (0 % detected without it)."
+  },
+  {
+    "file": "handstand/pexels-front-kickup-1.mp4",
+    "movement": "handstand",
+    "source": "https://www.pexels.com/video/37431721/",
+    "download": "https://videos.pexels.com/video-files/37431721/15853501_2160_3838_25fps.mp4",
+    "license": "Pexels License",
+    "width": 720,
+    "height": 1280,
+    "fps": 25.0,
+    "durationS": 28.96,
+    "view": "front",
+    "expectedReps": null,
+    "expectedHoldS": 24,
+    "activeRange": [
+      2.5,
+      28.0
+    ],
+    "notes": "Camera faces the athlete's front/back (not side) - kick-up is lateral to the camera. Tripod, forest path, portrait, athlete small in frame. Kick-up ~2.5-5 s, solid hold ~5.2-27.2 s (~22 s), cartwheel down 27.4-28.4 s.",
+    "tolerance": 1.5,
+    "verified": "Actually a side view. Inverted from ~2.6 s until he comes down at ~26.3 s."
+  },
+  {
+    "file": "lsit/pexels-side-bars-1.mp4",
+    "movement": "lsit",
+    "source": "https://www.pexels.com/video/4804764/",
+    "download": "https://videos.pexels.com/video-files/4804764/4804764-uhd_3840_2160_25fps.mp4",
+    "license": "Pexels License",
+    "width": 1280,
+    "height": 720,
+    "fps": 25.0,
+    "durationS": 8.64,
+    "view": "side",
+    "expectedReps": null,
+    "expectedHoldS": 6.7,
+    "activeRange": [
+      0,
+      6.8
+    ],
+    "notes": "Side view, tripod, outdoor parallel bars, framed tight (feet/torso/head; arms and bars at bottom edge). NOT a strict L-sit: one leg extended, other leg raised higher/staggered (V/one-leg variation). Hold 0-6.75 s, then lowers legs and dismounts.",
+    "verified": "One leg horizontal, one raised higher (harder than an L-sit); head above the frame."
+  },
+  {
+    "file": "lsit/pexels-angled-parallettes-2.mp4",
+    "movement": "lsit",
+    "source": "https://www.pexels.com/video/8519744/",
+    "download": "https://videos.pexels.com/video-files/8519744/8519744-uhd_4096_1680_25fps.mp4",
+    "license": "Pexels License",
+    "width": 1756,
+    "height": 720,
+    "fps": 25.0,
+    "durationS": 19.68,
+    "view": "angled",
+    "expectedReps": null,
+    "expectedHoldS": 5.0,
+    "activeRange": [
+      3.5,
+      18.0
+    ],
+    "notes": "Front 3/4 view, low-angle, outdoor under a bridge, tripod, wide 2.44:1 aspect. Tuck 2-3.5 s, L-sit approx 4.0-9.0 s (~5 s), then sits/lowers legs 9.5-15 s, short second L-sit ~15.5-17.5 s (~2 s). Feet sometimes close to ground; hold boundaries approximate.",
+    "offSetup": "Front 3/4 view with the legs pointing at the camera (their angle can't be read); head cropped."
+  },
+  {
+    "file": "frontlever/pexels-side-rings-1.mp4",
+    "movement": "frontlever",
+    "source": "https://www.pexels.com/video/37617181/",
+    "download": "https://videos.pexels.com/video-files/37617181/15943742_2160_3840_30fps.mp4",
+    "license": "Pexels License",
+    "width": 720,
+    "height": 1280,
+    "fps": 30.0,
+    "durationS": 32.0,
+    "view": "side",
+    "expectedReps": null,
+    "expectedHoldS": null,
+    "activeRange": [
+      0,
+      32.0
+    ],
+    "notes": "Side view, low angle looking up, tripod, outdoor rings, portrait. Athlete stays near-horizontal (front-lever position) for the whole clip but performs front-lever rows/raises (rings move toward chest and back) rather than a single static hold; body tilts several degrees. No clean static hold duration -> expectedHoldS null; whole 0-32 s is 'in lever position' if counting time-in-lever.",
+    "offSetup": "Front-lever rows, not a static hold; the small horizontal body is barely detected (rotating 270° raises confidence 0.31 → 0.41)."
+  },
+  {
+    "file": "frontlever/pexels-angled-bar-2.mp4",
+    "movement": "frontlever",
+    "source": "https://www.pexels.com/video/10077830/",
+    "download": "https://videos.pexels.com/video-files/10077830/10077830-hd_1920_1080_30fps.mp4",
+    "license": "Pexels License",
+    "width": 1920,
+    "height": 1080,
+    "fps": 29.97,
+    "durationS": 8.98,
+    "view": "angled",
+    "expectedReps": null,
+    "expectedHoldS": 4.5,
+    "activeRange": [
+      1.5,
+      9.0
+    ],
+    "notes": "Handheld moving camera in a gym, multiple angles (side-ish 2-6 s, hard cut at ~6.25 s, then front-angled 6.5-9 s). Front lever on a machine bar, ~horizontal from ~1.75 s to end (~7 s total, ~4.5 s clean before the cut). Busy background (gym machines). Low quality for this purpose.",
+    "offSetup": "Handheld, angled, busy gym background; low confidence in every rotation."
+  },
+  {
+    "file": "flappy/pexels-front-1.mp4",
+    "movement": "flappy",
+    "source": "https://www.pexels.com/video/6388436/",
+    "download": "https://videos.pexels.com/video-files/6388436/6388436-uhd_3840_2160_25fps.mp4",
+    "license": "Pexels License",
+    "width": 1280,
+    "height": 720,
+    "fps": 25.0,
+    "durationS": 17.36,
+    "view": "front",
+    "expectedReps": 4,
+    "expectedHoldS": null,
+    "activeRange": [
+      0,
+      17.4
+    ],
+    "notes": "Head-on view from floor in front of athlete's head, tripod, gym, dark lighting. Close framing: head/shoulders/arms only, legs not visible (fine for head-on). Bottoms ~1.4, 4.2, 7.4, 10.0, 12.8, 15.8 s -> 6 reps.",
+    "tolerance": 1,
+    "verified": "6 push-ups: 3 deep (bird to the bottom, 0.88) and 3 shallow (bird to ~0.6). The bird follows the depth, so 3–4 full flaps is right."
+  },
+  {
+    "file": "flappy/pexels-front-2.mp4",
+    "movement": "flappy",
+    "source": "https://www.pexels.com/video/8171391/",
+    "download": "https://videos.pexels.com/video-files/8171391/8171391-uhd_3840_2160_25fps.mp4",
+    "license": "Pexels License",
+    "width": 1280,
+    "height": 720,
+    "fps": 25.0,
+    "durationS": 7.28,
+    "view": "front",
+    "expectedReps": 2,
+    "expectedHoldS": null,
+    "activeRange": [
+      0,
+      7.3
+    ],
+    "notes": "Head-on from floor, home setting, camera slightly adjusts in first ~1 s. Bottoms ~1.4 and ~5.4 s -> 2 reps (slow). Short clip."
+  },
+  {
+    "file": "pullup/pexels-front-crowd-5.mp4",
+    "movement": "pullup",
+    "source": "https://www.pexels.com/video/10477152/",
+    "download": "https://www.pexels.com/download/video/10477152/",
+    "license": "Pexels License",
+    "view": "front",
+    "durationS": 35.2,
+    "expectedReps": 1,
+    "expectedHoldS": null,
+    "notes": "Faces the camera; prison-yard scene.",
+    "offSetup": "Edited with zoom cuts and other people around; from ~16 s the head is above the frame. The in-setup part (rep at 9–11.5 s) is counted."
+  },
+  {
+    "file": "pullup/pexels-back-steady-6.mp4",
+    "movement": "pullup",
+    "source": "https://www.pexels.com/video/4964660/",
+    "download": "https://www.pexels.com/download/video/4964660/",
+    "license": "Pexels License",
+    "view": "back",
+    "durationS": 11.4,
+    "expectedReps": 3,
+    "expectedHoldS": null,
+    "notes": "Back to the camera but steady, whole body in frame.",
+    "verified": "3 pull-ups (tops ~1.6, 5.4, 10 s). At the tops the model briefly puts the wrists below the shoulders; that no longer counts as letting go (shoulders are raised)."
+  },
+  {
+    "file": "pullup/pexels-lowangle-7.mp4",
+    "movement": "pullup",
+    "source": "https://www.pexels.com/video/4065388/",
+    "download": "https://www.pexels.com/download/video/4065388/",
+    "license": "Pexels License",
+    "view": "angled",
+    "durationS": 15.8,
+    "expectedReps": 3,
+    "expectedHoldS": null,
+    "notes": "Phone low, angled, filming into the sun; legs out of frame (allowed for pull-ups).",
+    "tolerance": 1,
+    "verified": "Starts at the top; then 3 reps from a hang (tops ~4, 8, 12.5 s). The ~4 s top is lost against the sun (no keypoints for most of a second), so 2–3 is right."
+  },
+  {
+    "file": "handstand/pexels-crow-press-4.mp4",
+    "movement": "handstand",
+    "source": "https://www.pexels.com/video/5149354/",
+    "download": "https://www.pexels.com/download/video/5149354/",
+    "license": "Pexels License",
+    "expectedReps": null,
+    "expectedHoldS": 1,
+    "notes": "Crow pose, then a press to handstand.",
+    "tolerance": 1,
+    "view": "side",
+    "verified": "Zoomed frames show the handstand is held with bent arms (~110° at 12.5 s); the arms only lock briefly. So only short straight-arm holds count, and 'lockArms' is correct."
+  },
+  {
+    "file": "handstand/pexels-far-press-5.mp4",
+    "movement": "handstand",
+    "source": "https://www.pexels.com/video/5593376/",
+    "download": "https://www.pexels.com/download/video/5593376/",
+    "license": "Pexels License",
+    "expectedReps": null,
+    "expectedHoldS": 22,
+    "notes": "Crow, press to handstand ~15 s, wobbly hold to ~37.5 s.",
+    "offSetup": "Athlete fills ~15% of the frame height (much farther than the app's 2–3 m portrait setup); elbow readings jump 27–177°."
+  },
+  {
+    "file": "pushup/pexels-side-oneleg-4.mp4",
+    "movement": "pushup",
+    "source": "https://www.pexels.com/video/8858126/",
+    "download": "https://www.pexels.com/download/video/8858126/",
+    "license": "Pexels License",
+    "expectedReps": 0,
+    "expectedHoldS": null,
+    "notes": "Negative test: push-ups from a downward-dog shape with one leg raised and hips high.",
+    "view": "side",
+    "verified": "Body line 74–118° throughout: every rep is rightly rejected as piked."
+  },
+  {
+    "file": "pushup/pexels-angled-moving-5.mp4",
+    "movement": "pushup",
+    "source": "https://www.pexels.com/video/6893310/",
+    "download": "https://www.pexels.com/download/video/6893310/",
+    "license": "Pexels License",
+    "expectedReps": 0,
+    "expectedHoldS": null,
+    "notes": "Angled front view, older athlete.",
+    "offSetup": "Camera dollies during the clip and a pillar hides the athlete for the first seconds."
+  }
+]

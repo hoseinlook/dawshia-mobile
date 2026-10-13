@@ -10,8 +10,8 @@ export const LSIT_THRESHOLDS = {
   lockedElbow: 150,
   /** Shoulder→hip line at least this steep (torso upright). */
   minTorsoIncline: 55,
-  /** Hip→ankle line at most this far from horizontal (legs out straight). */
-  maxLegIncline: 25,
+  /** Legs may drop at most this far below horizontal (higher legs, toward a V-sit, are fine). */
+  maxLegDrop: 25,
 } as const;
 
 const CUES = {
@@ -37,14 +37,17 @@ export class LsitAnalyzer extends HoldAnalyzer {
         const metrics: Record<string, number> = {};
         if (elbow === null || torso === null || legs === null) return { valid: false, cue: NOT_VISIBLE, metrics };
         metrics.elbowAngle = Math.round(elbow);
-        metrics.legIncline = Math.round(legs);
+        // Signed: positive when the feet are below the hips (y grows downward).
+        const legsDropping = pose.keypoints[k('ankle')].y > pose.keypoints[k('hip')].y;
+        const legDrop = legsDropping ? legs : -legs;
+        metrics.legDrop = Math.round(legDrop);
 
         const h = bodyHeights(pose);
         // Support: hands below the shoulders (pressing down on the floor or parallettes).
         if (h.wrists <= h.shoulders) return { valid: false, cue: CUES.pressUp, metrics };
         if (elbow < LSIT_THRESHOLDS.lockedElbow) return { valid: false, cue: CUES.lockArms, metrics };
         if (torso < LSIT_THRESHOLDS.minTorsoIncline) return { valid: false, cue: CUES.sitUpright, metrics };
-        if (legs > LSIT_THRESHOLDS.maxLegIncline) return { valid: false, cue: CUES.liftLegs, metrics };
+        if (legDrop > LSIT_THRESHOLDS.maxLegDrop) return { valid: false, cue: CUES.liftLegs, metrics };
         return { valid: true, cue: null, metrics };
       },
       () => elbowSmoother.reset(),

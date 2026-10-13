@@ -66,19 +66,12 @@ export function elbowAngleStream(
   extra: Omit<SideViewOptions, 'elbowAngle' | 'timestampMs'> = {},
   startMs = 0,
 ): Pose[] {
-  const frameMs = 33;
-  const poses: Pose[] = [];
-  let t = startMs;
-  for (let i = 0; i < waypoints.length - 1; i++) {
-    const steps = Math.max(1, Math.round(msPerSegment / frameMs));
-    for (let s = 0; s < steps; s++) {
-      const angle = waypoints[i] + ((waypoints[i + 1] - waypoints[i]) * s) / steps;
-      poses.push(sideViewPose({ ...extra, elbowAngle: angle, timestampMs: t }));
-      t += frameMs;
-    }
-  }
-  poses.push(sideViewPose({ ...extra, elbowAngle: waypoints[waypoints.length - 1], timestampMs: t }));
-  return poses;
+  return poseStream(
+    (elbowAngle, timestampMs) => sideViewPose({ ...extra, elbowAngle, timestampMs }),
+    waypoints,
+    msPerSegment,
+    startMs,
+  );
 }
 
 export interface FrontHangOptions {
@@ -135,23 +128,34 @@ export function frontHangPose({ elbowAngle, standing = false, hidden = [], times
   return { keypoints, frameWidth: HANG_FRAME_W, frameHeight: HANG_FRAME_H, timestampMs };
 }
 
+/** Frames spent at each waypoint, like a real body pausing at the top / bottom (~100 ms). */
+const DWELL_FRAMES = 3;
+
 /** ~30 fps stream through elbow-angle waypoints using any pose builder. */
 export function poseStream(
   build: (elbowAngle: number, timestampMs: number) => Pose,
   waypoints: number[],
   msPerSegment: number,
+  startMs = 0,
 ): Pose[] {
   const frameMs = 33;
   const poses: Pose[] = [];
-  let t = 0;
+  let t = startMs;
   for (let i = 0; i < waypoints.length - 1; i++) {
+    for (let d = 1; d < DWELL_FRAMES; d++) {
+      poses.push(build(waypoints[i], t));
+      t += frameMs;
+    }
     const steps = Math.max(1, Math.round(msPerSegment / frameMs));
     for (let s = 0; s < steps; s++) {
       poses.push(build(waypoints[i] + ((waypoints[i + 1] - waypoints[i]) * s) / steps, t));
       t += frameMs;
     }
   }
-  poses.push(build(waypoints[waypoints.length - 1], t));
+  for (let d = 0; d < DWELL_FRAMES; d++) {
+    poses.push(build(waypoints[waypoints.length - 1], t));
+    t += frameMs;
+  }
   return poses;
 }
 

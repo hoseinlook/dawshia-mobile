@@ -19,12 +19,16 @@ export interface PoseCamera {
 
 /**
  * The front camera with pose detection on every frame; `onPose` gets each pose.
+ * `upsideDown`: also read each frame rotated 180° (handstands).
  * The web build (PoseCamera.web.tsx) uses the browser's webcam and TensorFlow.js.
  */
-export function usePoseCamera(onPose: (pose: Pose | null) => void): PoseCamera {
+export function usePoseCamera(
+  onPose: (pose: Pose | null) => void,
+  options: { upsideDown?: boolean } = {},
+): PoseCamera {
   const { hasPermission, requestPermission } = useCameraPermission();
   const device = useCameraDevice('front');
-  const detection = usePoseDetection(onPose);
+  const detection = usePoseDetection(onPose, options);
   return {
     hasPermission,
     requestPermission,

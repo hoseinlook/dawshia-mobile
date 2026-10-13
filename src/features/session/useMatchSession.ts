@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from 'react';
 
+import { MIN_HOLD_ATTEMPT_MS } from '../../core/exercises/holdAnalyzer';
 import type { ExerciseDefinition, ExerciseEvent, FormCue } from '../../core/exercises/types';
 import { FlappyGame, type FlappyState } from '../../core/games/flappy';
 import { computeResult, createMatchState, matchReducer } from '../../core/match/matchReducer';
@@ -266,9 +267,11 @@ export function useMatchSession({ exercise, timeControlId, mode, challenge }: Op
             lastHoldReportRef.current = now;
             act({ type: 'hold', participantId: localParticipantId, holdMs, nowMs: now });
           }
-        } else if (lastHoldMsRef.current > 0) {
+        } else if (lastHoldMsRef.current >= MIN_HOLD_ATTEMPT_MS) {
           act({ type: 'holdBroken', participantId: localParticipantId, holdMs: lastHoldMsRef.current, nowMs: now });
           lastHoldMsRef.current = 0;
+        } else {
+          lastHoldMsRef.current = 0; // too short to be an attempt: try again
         }
       }
 

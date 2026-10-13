@@ -115,7 +115,11 @@ export class MuscleupAnalyzer implements ExerciseAnalyzer {
     const metrics = { elbowAngle: Math.round(elbow), barHeight: Math.round(height * 100) / 100 };
 
     const hanging = height <= MUSCLEUP_THRESHOLDS.hangHeight && elbow >= MUSCLEUP_THRESHOLDS.straightElbow;
-    if (hanging && body.upright) this.barY = body.wristsY;
+    // The bar is where the hands are in a dead hang — judged on this frame, not the smoothed
+    // signals, which still say "hanging" for a moment after dropping to the floor.
+    const hangingNow =
+      body.height <= MUSCLEUP_THRESHOLDS.hangHeight && body.elbow >= MUSCLEUP_THRESHOLDS.straightElbow;
+    if (hanging && hangingNow && body.upright) this.barY = body.wristsY;
 
     const onBar =
       body.upright &&

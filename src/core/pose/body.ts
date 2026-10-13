@@ -9,6 +9,18 @@ export function averageElbowAngle(pose: Pose): number | null {
   return arms.length ? arms.reduce((a, b) => a + b, 0) / arms.length : null;
 }
 
+/**
+ * Elbow angle of the more confident arm, accepting weaker detections (minScore 0.2). For holds
+ * seen from the side, where the far arm is hidden and an inverted body gets low scores.
+ */
+export function clearestElbowAngle(pose: Pose, minScore = 0.2): number | null {
+  const k = pose.keypoints;
+  const armScore = (side: 'left' | 'right') =>
+    Math.min(k[`${side}Shoulder`].score, k[`${side}Elbow`].score, k[`${side}Wrist`].score);
+  const side = armScore('left') >= armScore('right') ? 'left' : 'right';
+  return jointAngle(pose, `${side}Shoulder`, `${side}Elbow`, `${side}Wrist`, minScore);
+}
+
 const avg = (a: number, b: number) => (a + b) / 2;
 
 /** Normalized heights (y grows downward) of body landmarks, averaged left/right. */

@@ -21,8 +21,13 @@ export const PULLUP_THRESHOLDS = {
   partialRise: 0.45,
   /** Below this rise during the top phase the athlete is "coming back down". */
   returnRise: 0.5,
-  /** Elbow angle that counts as a full dead hang, when the arms are visible. */
-  hangElbow: 150,
+  /**
+   * Elbow angle that counts as a full dead hang, when the arms are visible. Measured hangs on
+   * real videos are 140–175° (arms overhead are foreshortened); half reps stay around 120°.
+   */
+  hangElbow: 140,
+  /** Arms this straight while hanging = a dead hang for sure: it resets the hang position. */
+  straightElbow: 160,
   /** Shoulder→hip line must be at least this steep (90 = vertical), when the hips are visible. */
   minBodyIncline: 55,
   minRepMs: 600,
@@ -132,6 +137,9 @@ export class PullupAnalyzer implements ExerciseAnalyzer {
   private lastMs: number | null = null;
   private handsDownSinceMs: number | null = null;
   private lastSeenMs: number | null = null;
+  private lyingSinceMs: number | null = null;
+  /** Smoothed shoulder width of the last frame on the bar. */
+  private lastWidth: number | null = null;
 
   private validReps = 0;
   private repMaxRise = 0;
@@ -164,16 +172,27 @@ export class PullupAnalyzer implements ExerciseAnalyzer {
     // needs the hands seen down for a moment (at the top the hands may be out of the frame).
     if (body.handsDown) this.handsDownSinceMs ??= timestampMs;
     else this.handsDownSinceMs = null;
-    const letGo =
-      body.lying ||
-      (this.handsDownSinceMs !== null && timestampMs - this.handsDownSinceMs >= PULLUP_THRESHOLDS.offBarMs);
+    if (body.lying) this.lyingSinceMs ??= timestampMs;
+    else this.lyingSinceMs = null;
+    const lasted = (since: number | null) => since !== null && timestampMs - since >= PULLUP_THRESHOLDS.offBarMs;
+    // Shoulders well above the hang can't be standing on the floor: "hands down" there is the
+    // model mixing up the arms (seen on real videos from behind and against the light).
+    const raised =
+      this.baselineY !== null &&
+      this.lastWidth !== null &&
+      (this.baselineY - body.shoulderY) / this.lastWidth >= PULLUP_THRESHOLDS.returnRise;
+    // Both need a moment: a single frame with misplaced hips or wrists is a glitch.
+    const letGo = !raised && (lasted(this.lyingSinceMs) || lasted(this.handsDownSinceMs));
     if (this.onBar && letGo) this.leaveBar();
     else if (!this.onBar && body.armsUp && !body.lying && !body.handsDown) this.onBar = true;
     if (!this.onBar) return this.result(false, events, [CUES.getOnBar], metrics);
 
     const width = this.widthSmoother.update(body.shoulderWidth, timestampMs) ?? body.shoulderWidth;
+    this.lastWidth = width;
     const decayed = this.baselineY === null ? body.shoulderY : this.baselineY - BASELINE_DECAY_PER_S * width * dt;
-    this.baselineY = Math.max(body.shoulderY, decayed);
+    // Straight arms seen while hanging: this is the dead hang, even if the phone moved since.
+    const deadHang = body.elbow !== null && body.elbow >= PULLUP_THRESHOLDS.straightElbow && body.armsUp;
+    this.baselineY = deadHang ? body.shoulderY : Math.max(body.shoulderY, decayed);
     const rise = this.riseSmoother.update((this.baselineY - body.shoulderY) / width, timestampMs) ?? 0;
     metrics.rise = Math.round(rise * 100) / 100;
 
@@ -231,7 +250,9 @@ export class PullupAnalyzer implements ExerciseAnalyzer {
     this.baselineY = null;
     this.lastMs = null;
     this.handsDownSinceMs = null;
+    this.lyingSinceMs = null;
     this.lastSeenMs = null;
+    this.lastWidth = null;
     this.validReps = 0;
     this.resetRepAccumulators();
   }

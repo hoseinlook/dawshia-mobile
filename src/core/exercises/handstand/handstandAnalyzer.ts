@@ -1,4 +1,4 @@
-import { averageElbowAngle, isInverted } from '../../pose/body';
+import { clearestElbowAngle, isInverted } from '../../pose/body';
 import { inclinationFromHorizontal } from '../../pose/geometry';
 import { SignalSmoother } from '../../pose/smoothing';
 import type { Pose } from '../../pose/types';
@@ -28,7 +28,7 @@ export class HandstandAnalyzer extends HoldAnalyzer {
     const elbowSmoother = new SignalSmoother(0.5);
     super(
       (pose: Pose, timestampMs: number): HoldCheck => {
-        const elbow = elbowSmoother.update(averageElbowAngle(pose), timestampMs);
+        const elbow = elbowSmoother.update(clearestElbowAngle(pose), timestampMs);
         const incline = Math.max(
           inclinationFromHorizontal(pose, 'leftShoulder', 'leftAnkle') ?? 0,
           inclinationFromHorizontal(pose, 'rightShoulder', 'rightAnkle') ?? 0,
@@ -37,7 +37,7 @@ export class HandstandAnalyzer extends HoldAnalyzer {
         if (elbow === null) return { valid: false, cue: NOT_VISIBLE, metrics };
         metrics.elbowAngle = Math.round(elbow);
         if (!isInverted(pose)) return { valid: false, cue: CUES.kickUp, metrics };
-        if (elbow < HANDSTAND_THRESHOLDS.lockedElbow) return { valid: false, cue: CUES.lockArms, metrics };
+        if (elbow < HANDSTAND_THRESHOLDS.lockedElbow) return { valid: false, cue: CUES.lockArms, metrics, soft: true };
         if (incline < HANDSTAND_THRESHOLDS.minBodyIncline) return { valid: false, cue: CUES.straightBody, metrics };
         return { valid: true, cue: null, metrics };
       },

@@ -121,6 +121,12 @@ export class PushupAnalyzer implements ExerciseAnalyzer {
       return this.result(false, events, [CUES.getInPlank], metrics);
     }
 
+    // Resting locked out at the top: the rep hasn't started, so how they got into the plank
+    // (e.g. hips piked while setting up) doesn't count against it.
+    if (this.machine.currentPhase === 'start' && !this.partialDescent && elbow >= PUSHUP_THRESHOLDS.lockoutElbow) {
+      this.resetRepAccumulators();
+    }
+
     // Track form across the current rep.
     this.repMinElbow = Math.min(this.repMinElbow, elbow);
     this.repMaxElbow = Math.max(this.repMaxElbow, elbow);

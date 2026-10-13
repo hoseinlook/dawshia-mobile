@@ -40,3 +40,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Test videos for scripts/video-eval (large; kept local, see scripts/video-eval/videos.json)
+/test-videos/
+/.venv-eval/

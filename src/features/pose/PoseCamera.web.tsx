@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 
 import type { Pose } from '../../core/pose/types';
 import { decodeMoveNet, isPoseVisible, MOVENET_INPUT_SIZE } from './detectors/moveNet';
+import { selectUpright } from './detectors/upsideDown';
 import { preloadPoseEngine, type PoseEngine } from './poseEngine.web';
 
 type PoseDetectionStatus = 'loading' | 'ready' | 'error';
@@ -35,7 +36,10 @@ const hasWebcam = () => typeof navigator !== 'undefined' && !!navigator.mediaDev
  * with MoveNet (TensorFlow.js) on every frame. Keypoints are mirrored too, so the skeleton
  * lines up with the preview. Needs HTTPS (or localhost) for camera access.
  */
-export function usePoseCamera(onPose: (pose: Pose | null) => void): PoseCamera {
+export function usePoseCamera(
+  onPose: (pose: Pose | null) => void,
+  { upsideDown = false }: { upsideDown?: boolean } = {},
+): PoseCamera {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [engine, setEngine] = useState<PoseEngine | null>(null);
   const [error, setError] = useState<Error | undefined>();
@@ -94,7 +98,7 @@ export function usePoseCamera(onPose: (pose: Pose | null) => void): PoseCamera {
       const frameWidth = video.videoWidth;
       const frameHeight = video.videoHeight;
       try {
-        const output = tf.tidy(() => {
+        const outputs = tf.tidy(() => {
           const frame = tf.browser.fromPixels(video);
           const scale = size / Math.max(frameWidth, frameHeight);
           const w = Math.round(frameWidth * scale);
@@ -107,11 +111,15 @@ export function usePoseCamera(onPose: (pose: Pose | null) => void): PoseCamera {
             [left, size - w - left],
             [0, 0],
           ]);
-          return engine.model.execute(tf.expandDims(tf.cast(padded, 'int32'), 0)) as tf.Tensor;
+          const input = tf.expandDims(tf.cast(padded, 'int32'), 0);
+          const run = (x: tf.Tensor) => engine.model.execute(x) as tf.Tensor;
+          // Inverted athletes are read better upside down (detectors/upsideDown.ts).
+          return upsideDown ? [run(input), run(tf.reverse(input, [1, 2]))] : [run(input)];
         });
-        const data = (await output.data()) as Float32Array;
-        output.dispose();
+        const [normal, rotated] = await Promise.all(outputs.map((t) => t.data() as Promise<Float32Array>));
+        outputs.forEach((t) => t.dispose());
         if (stopped) return;
+        const data = rotated ? selectUpright(normal, rotated) : normal;
         const keypoints = decodeMoveNet(data, frameWidth, frameHeight);
         for (const k of Object.values(keypoints)) k.x = 1 - k.x; // match the mirrored preview
         onPoseRef.current(
@@ -128,7 +136,7 @@ export function usePoseCamera(onPose: (pose: Pose | null) => void): PoseCamera {
       stopped = true;
       cancelAnimationFrame(raf);
     };
-  }, [engine, video]);
+  }, [engine, video, upsideDown]);
 
   useEffect(() => {
     if (video && stream) playStream(video, stream);

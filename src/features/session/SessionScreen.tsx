@@ -67,7 +67,7 @@ export function SessionScreen({ exercise, timeControlId, mode, challenge }: Prop
   const { m, f, n, dir } = useI18n();
 
   const session = useMatchSession({ exercise, timeControlId, mode, challenge });
-  const detection = usePoseCamera(session.onPose);
+  const detection = usePoseCamera(session.onPose, { upsideDown: exercise.camera.upsideDown });
   const { hasPermission, requestPermission } = detection;
   const cheer = useCheers();
   const { settings } = useSettings();

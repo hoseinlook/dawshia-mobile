@@ -348,6 +348,31 @@ The Persian clips are generated placeholders. Record your own (a short `.m4a` ea
 
 The thresholds are in `PUSHUP_THRESHOLDS` (`src/core/exercises/pushup/pushupAnalyzer.ts`), `PULLUP_THRESHOLDS` (`src/core/exercises/pullup/pullupAnalyzer.ts`) and `MUSCLEUP_THRESHOLDS` (`src/core/exercises/muscleup/muscleupAnalyzer.ts`). During a session, the live elbow angle is shown in the bottom-right corner to help tuning on real devices.
 
+### Testing on real videos
+
+[`scripts/video-eval`](scripts/video-eval) runs **the app's own model** (`movenet_lightning_f16.tflite`, with the same 192×192 letterbox as the phone) on real exercise clips. It then plays the keypoints through the exercise analyzers the way a session does, and compares the result with what is in the video.
+
+- `videos.json` lists the clips (free Pexels videos). Each entry has its source, the expected reps or hold seconds (counted frame by frame), and notes. Clips that don't match the app's camera setup are marked `offSetup`: they are shown but not judged.
+- The videos are downloaded into `test-videos/`, which is **git-ignored**. The keypoints extracted from them are small and committed in `poses/`. So `scripts/video-eval/videos.test.ts` runs in `npm test` / CI without the videos.
+
+```sh
+python3 -m venv .venv-eval && .venv-eval/bin/pip install ai-edge-litert numpy pillow
+.venv-eval/bin/python scripts/video-eval/extract_all.py           # keypoints for clips without poses/ yet (--force: all)
+npx tsx scripts/video-eval/evaluate.ts [movement] [--verbose]     # score every clip
+npx tsx scripts/video-eval/evaluate.ts pullup --trace              # per-frame analyzer output for…
+.venv-eval/bin/python scripts/video-eval/debug_sheet.py pullup/pexels-front-1.mp4   # …a contact sheet: skeleton + phase + metrics
+```
+
+What the videos taught us (all covered by tests now):
+- **One-frame glitches.** A wrist can jump for a single frame. `SignalSmoother` takes the median of the last 3 samples before averaging, so a glitch neither starts a half rep nor completes a rep early.
+- **Upside-down bodies.** MoveNet reads a handstand as a person standing with their feet on their hands. Inverted exercises (`camera.upsideDown`) also run the model on the frame rotated 180° and keep the more confident result ([`detectors/upsideDown.ts`](src/features/pose/detectors/upsideDown.ts)). On a side-view handstand clip, detection went from 0 % to 96 % of frames.
+- **Holds.** Bent-arm readings on an inverted arm are noisy, so they are a *soft* failure: the arms must look bent for 1.5 s before the hold breaks. A hold shorter than 1 s (a failed kick-up) doesn't end a resistance competition.
+- **Push-ups:** how the athlete got into the plank (hips piked while setting up) no longer counts against the first rep.
+- **Pull-ups:** "full hang" means an elbow of 140° or more; on video, real hangs measure 140–175°. Straight arms (160° or more) reset the hang position, so a bumped phone recovers.
+- **L-sit:** legs above horizontal are fine; only legs dropping more than 25° fail.
+
+Not verified yet, because there was no usable free clip in the app's camera setup: dips, muscle-ups, handstand push-ups (side view) and front lever. MoveNet also struggles with small horizontal bodies (front lever), and a person-tracking crop would help all exercises.
+
 ## CI and releases (GitHub)
 
 - **CI** (`.github/workflows/ci.yml`) runs typecheck, lint and tests on every push to `main` and every pull request.
