@@ -18,12 +18,13 @@ import { sortConversations } from '../../features/chat/chatFormat';
 import { useChat } from '../../features/chat/ChatProvider';
 import { ConversationRow } from '../../features/chat/ConversationRow';
 import { useFriends } from '../../features/social/FriendsProvider';
+import { useOnlinePlayers } from '../../features/social/useOnlinePlayers';
 import { formatScore, timeAgo } from '../../i18n/activity';
 import { exerciseText } from '../../i18n/lookup';
 import { showAlert } from '../../ui/alert';
 import { useI18n } from '../../i18n/useI18n';
 import { useServices } from '../../services/ServicesProvider';
-import type { FriendInfo } from '../../services/types';
+import type { FriendInfo, RankedPlayer } from '../../services/types';
 import { useAvatar } from '../../features/avatar/avatars';
 import { AppText } from '../../ui/components/AppText';
 import { Avatar } from '../../ui/components/Avatar';
@@ -43,6 +44,7 @@ export default function FriendsScreen() {
   const { available, refresh } = useFriends();
   const chat = useChat();
   const refreshChats = chat.refresh;
+  const online = useOnlinePlayers();
   const [tab, setTab] = useState<Tab>('friends');
   const [refreshing, setRefreshing] = useState(false);
 
@@ -56,7 +58,7 @@ export default function FriendsScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([refresh(), refreshChats()]);
+    await Promise.all([refresh(), refreshChats(), online.refresh()]);
     setRefreshing(false);
   };
 
@@ -75,7 +77,7 @@ export default function FriendsScreen() {
   return (
     <SafeAreaView style={[styles.root, dir]} edges={['top']}>
       {tab === 'friends' ? (
-        <FriendsList header={header} refreshControl={refreshControl} onRetry={onRefresh} />
+        <FriendsList header={header} refreshControl={refreshControl} onRetry={onRefresh} online={online.players} />
       ) : (
         <Inbox header={header} refreshControl={refreshControl} />
       )}
@@ -130,16 +132,22 @@ function FriendsList({
   header,
   refreshControl,
   onRetry,
+  online,
 }: {
   header: React.ReactNode;
   refreshControl: React.ReactElement<React.ComponentProps<typeof RefreshControl>>;
   onRetry: () => void;
+  /** Everyone online right now (null while loading). */
+  online: RankedPlayer[] | null;
 }) {
   const { m } = useI18n();
   const { friends, error } = useFriends();
 
   const incoming = friends?.filter((x) => x.state === 'incoming') ?? [];
   const outgoing = friends?.filter((x) => x.state === 'outgoing') ?? [];
+  // Online players who aren't friends yet (friends are listed below with their own Fight button).
+  const friendIds = new Set(friends?.filter((x) => x.state === 'friend').map((x) => x.userId));
+  const others = online?.filter((p) => !friendIds.has(p.userId)) ?? null;
   // Online friends first, then the most recently active.
   const mutual = (friends?.filter((x) => x.state === 'friend') ?? []).sort(
     (a, b) => Number(b.online) - Number(a.online) || (b.lastActivity?.at ?? 0) - (a.lastActivity?.at ?? 0),
@@ -162,6 +170,17 @@ function FriendsList({
           </AppText>
           <Button label={m.profile.retry} variant="secondary" icon="refresh" onPress={onRetry} />
         </View>
+      ) : null}
+
+      {others !== null ? (
+        <Section title={m.friends.onlineNow} count={others.length}>
+          <AppText variant="caption" color={colors.textMuted} start>
+            {others.length > 0 ? m.friends.onlineNowHint : m.friends.onlineNowEmpty}
+          </AppText>
+          {others.map((p) => (
+            <OnlineRow key={p.userId} player={p} />
+          ))}
+        </Section>
       ) : null}
 
       {incoming.length > 0 ? (
@@ -434,24 +453,7 @@ function FriendRow({ friend }: { friend: FriendInfo }) {
         />
       ) : (
         <View style={styles.actions}>
-          {friend.online ? (
-            <Pressable
-              onPress={() =>
-                router.push({
-                  pathname: '/challenge/[userId]',
-                  params: { userId: friend.userId, username: friend.username },
-                })
-              }
-              accessibilityRole="button"
-              accessibilityLabel={f(m.challenge.fightLabel, { username: friend.username })}
-              style={({ pressed }) => [styles.fight, pressed && styles.fightPressed]}
-            >
-              <Icon name="sword-cross" size="sm" color={colors.background} />
-              <AppText variant="label" color={colors.background}>
-                {m.challenge.fight}
-              </AppText>
-            </Pressable>
-          ) : null}
+          {friend.online ? <FightButton userId={friend.userId} username={friend.username} /> : null}
           <IconButton
             icon="account-remove-outline"
             label={m.friends.remove}
@@ -461,6 +463,58 @@ function FriendRow({ friend }: { friend: FriendInfo }) {
         </View>
       )}
     </View>
+  );
+}
+
+/** An online player who isn't your friend: open their page, or send a fight request. */
+function OnlineRow({ player }: { player: RankedPlayer }) {
+  const { m, f } = useI18n();
+  const { social } = useServices();
+  const avatar = useAvatar(social, player.userId, player.avatarAt);
+  const rankLine = [
+    player.rank in m.ranks ? m.ranks[player.rank as keyof Messages['ranks']] : null,
+    f(m.vs.level, { level: player.level }),
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  return (
+    <View style={styles.row} accessible={false}>
+      <Pressable
+        onPress={() => router.push({ pathname: '/player/[userId]', params: { userId: player.userId } })}
+        accessibilityRole="button"
+        accessibilityLabel={[player.username, m.friends.online, rankLine].join(', ')}
+        style={({ pressed }) => [styles.openPlayer, pressed && styles.iconButtonPressed]}
+      >
+        <Avatar image={avatar} name={player.username} online />
+        <View style={styles.rowText}>
+          <AppText variant="bodyBold" start numberOfLines={1} style={styles.username}>
+            {player.username}
+          </AppText>
+          <AppText variant="caption" color={colors.accent} start>
+            {m.friends.online} · {rankLine}
+          </AppText>
+        </View>
+      </Pressable>
+      <FightButton userId={player.userId} username={player.username} />
+    </View>
+  );
+}
+
+function FightButton({ userId, username }: { userId: string; username: string }) {
+  const { m, f } = useI18n();
+  return (
+    <Pressable
+      onPress={() => router.push({ pathname: '/challenge/[userId]', params: { userId, username } })}
+      accessibilityRole="button"
+      accessibilityLabel={f(m.challenge.fightLabel, { username })}
+      style={({ pressed }) => [styles.fight, pressed && styles.fightPressed]}
+    >
+      <Icon name="sword-cross" size="sm" color={colors.background} />
+      <AppText variant="label" color={colors.background}>
+        {m.challenge.fight}
+      </AppText>
+    </Pressable>
   );
 }
 

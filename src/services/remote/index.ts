@@ -119,6 +119,10 @@ function remoteSocial(session: SessionManager): SocialService {
       const r = await session.rpc<{ players: RankedPlayer[]; me?: RankedPlayer }>('get_top_players', { limit: 50 });
       return { players: r.players ?? [], me: r.me ?? null };
     },
+    async listOnlinePlayers() {
+      const r = await session.rpc<{ players: RankedPlayer[] }>('get_online_players');
+      return r.players ?? [];
+    },
     async getPlayer(userId) {
       return session.rpc<PlayerDetails>('get_player', { userId, today: localDateString(new Date()) });
     },
@@ -130,8 +134,8 @@ function remoteSocial(session: SessionManager): SocialService {
       const r = await session.rpc<{ avatars: Record<string, Avatar> }>('get_avatars', { userIds });
       return r.avatars ?? {};
     },
-    async challengeFriend(userId, exerciseId, timeControlId) {
-      return session.rpc<ChallengeMatch>('challenge_friend', {
+    async challengePlayer(userId, exerciseId, timeControlId) {
+      return session.rpc<ChallengeMatch>('challenge_player', {
         userId,
         exercise: exerciseId,
         timeControl: timeControlId,

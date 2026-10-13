@@ -29,20 +29,22 @@ export interface MatchRequest {
   challenge?: ChallengeMatch;
 }
 
-/** A friend challenge's private match, as the challenger or the challenged friend. */
+/** A 1v1 challenge's private match, as the challenger or the challenged player. */
 export interface ChallengeMatch {
   matchId: string;
   /** After this (epoch ms) the challenge can no longer be accepted. */
   expiresAt: number;
 }
 
-/** A friend challenged you to a 1v1 (arrives while the app is open). */
+/** A player challenged you to a 1v1 (arrives while the app is open). */
 export interface ChallengeInvite extends ChallengeMatch {
   exerciseId: ExerciseId;
   timeControlId: TimeControlId;
   /** The challenger. */
   userId: string;
   username: string;
+  /** The challenger is one of your friends (anyone online can send a fight request). */
+  friend: boolean;
 }
 
 /** Why a friend challenge did not start. */
@@ -235,12 +237,14 @@ export interface SocialService {
   updatePublicProfile(profile: { xp: number }): Promise<void>;
   /** Top players by level, plus the caller's own position. */
   listTopPlayers(): Promise<{ players: RankedPlayer[]; me: RankedPlayer | null }>;
+  /** Other players online right now (highest level first), to send fight requests to. */
+  listOnlinePlayers(): Promise<RankedPlayer[]>;
   getPlayer(userId: string): Promise<PlayerDetails>;
   /** Uploads (or with null removes) the caller's profile photo. */
   setAvatar(base64: string | null): Promise<void>;
   getAvatars(userIds: string[]): Promise<Record<string, Avatar>>;
-  /** Challenges an online friend to a 1v1 in a private match; join it with `MatchRequest.challenge`. */
-  challengeFriend(userId: string, exerciseId: ExerciseId, timeControlId: TimeControlId): Promise<ChallengeMatch>;
+  /** Challenges an online player (friend or not) to a 1v1 in a private match; join it with `MatchRequest.challenge`. */
+  challengePlayer(userId: string, exerciseId: ExerciseId, timeControlId: TimeControlId): Promise<ChallengeMatch>;
   /** Tells the challenger you said no. */
   declineChallenge(invite: ChallengeInvite): Promise<void>;
   /** Players you played a 1v1 with, most recent first. */

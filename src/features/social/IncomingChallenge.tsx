@@ -1,3 +1,4 @@
+import { usePathname } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -12,15 +13,20 @@ import { useAvatar } from '../avatar/avatars';
 import { useFriends } from './FriendsProvider';
 import { useChallenges } from './ChallengesProvider';
 
-/** Card at the top of the tabs when a friend challenges you: accept or decline. */
+/**
+ * Card at the top of any screen (except a running match) when someone
+ * challenges you: accept or decline.
+ */
 export function IncomingChallenge() {
   const { m, f, dir } = useI18n();
   const { incoming, accept, decline } = useChallenges();
   const { friends } = useFriends();
   const { social } = useServices();
+  const pathname = usePathname();
   const avatarAt = friends?.find((x) => x.userId === incoming?.userId)?.avatarAt;
   const avatar = useAvatar(social, incoming?.userId, avatarAt);
-  if (!incoming) return null;
+  // Never cover a match; the card shows again once it ends (if the request is still open).
+  if (!incoming || pathname.startsWith('/session')) return null;
 
   return (
     <SafeAreaView edges={['top']} style={styles.wrap} pointerEvents="box-none">
@@ -34,6 +40,11 @@ export function IncomingChallenge() {
             <AppText variant="caption" color={colors.textMuted} start>
               {exerciseText(m, incoming.exerciseId).name} · {timeControlText(m, incoming.timeControlId).label}
             </AppText>
+            {incoming.friend ? null : (
+              <AppText variant="caption" color={colors.textMuted} start>
+                {m.challenge.notFriend}
+              </AppText>
+            )}
           </View>
         </View>
         <View style={styles.actions}>

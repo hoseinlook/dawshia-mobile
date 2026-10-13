@@ -128,28 +128,36 @@ function FriendAction({ player }: { player: PlayerDetails }) {
   if (player.userId === session?.userId || friends === null) return null;
   const state = friends.find((x) => x.userId === player.userId)?.state;
 
+  // Anyone online can be challenged, friend or not.
+  const fight = player.online ? (
+    <Button
+      label={m.challenge.fight}
+      icon="sword-cross"
+      variant="versus"
+      onPress={() =>
+        router.push({
+          pathname: '/challenge/[userId]',
+          params: { userId: player.userId, username: player.username },
+        })
+      }
+    />
+  ) : null;
+
   if (state === 'friend') {
     return (
       <>
         <Chip icon="account-check" label={m.player.isFriend} color={colors.accent} />
-        {player.online ? (
-          <Button
-            label={m.challenge.fight}
-            icon="sword-cross"
-            variant="versus"
-            onPress={() =>
-              router.push({
-                pathname: '/challenge/[userId]',
-                params: { userId: player.userId, username: player.username },
-              })
-            }
-          />
-        ) : null}
+        {fight}
       </>
     );
   }
   if (state === 'outgoing') {
-    return <Chip icon="clock-outline" label={m.player.requestSent} color={colors.textMuted} />;
+    return (
+      <>
+        <Chip icon="clock-outline" label={m.player.requestSent} color={colors.textMuted} />
+        {fight}
+      </>
+    );
   }
   const onPress = async () => {
     setBusy(true);
@@ -162,13 +170,16 @@ function FriendAction({ player }: { player: PlayerDetails }) {
     }
   };
   return (
-    <Button
-      label={state === 'incoming' ? m.player.acceptRequest : m.player.addFriend}
-      icon="account-plus"
-      variant="secondary"
-      disabled={busy}
-      onPress={onPress}
-    />
+    <>
+      <Button
+        label={state === 'incoming' ? m.player.acceptRequest : m.player.addFriend}
+        icon="account-plus"
+        variant="secondary"
+        disabled={busy}
+        onPress={onPress}
+      />
+      {fight}
+    </>
   );
 }
 

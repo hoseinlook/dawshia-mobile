@@ -21,7 +21,7 @@ import { haptics } from '../../ui/haptics';
 import { useScreenOrientation } from '../../ui/hooks/useScreenOrientation';
 import { colors, radius, spacing, touchTarget } from '../../ui/theme';
 
-/** Fight request to an online friend: pick the movement and competition, then wait for them. */
+/** Fight request to an online player (friend or not): pick the movement and competition, then wait for them. */
 export default function ChallengeScreen() {
   useScreenOrientation('portrait');
   const { m, f, dir, isRTL } = useI18n();
@@ -56,7 +56,13 @@ export default function ChallengeScreen() {
       await send({ userId, username: name }, exerciseId, competition);
     } catch (e) {
       const text = e instanceof Error ? e.message : '';
-      setError(/offline/i.test(text) ? f(m.challenge.offline, { username: name }) : m.challenge.sendError);
+      setError(
+        /offline/i.test(text)
+          ? f(m.challenge.offline, { username: name })
+          : /too many/i.test(text)
+            ? m.challenge.tooMany
+            : m.challenge.sendError,
+      );
       setBusy(false);
     }
   };

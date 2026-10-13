@@ -1,5 +1,5 @@
 /**
- * End-to-end check of friend fight requests against a running Dawshia server,
+ * End-to-end check of fight requests (to friends and to any online player) against a running Dawshia server,
  * using the app's own client code.
  *
  *   npx tsx scripts/e2e/challenge.ts [http://localhost:7350]
@@ -45,7 +45,18 @@ async function online(p: Player) {
 }
 
 const challenge = (from: Player, to: Player, exercise = 'pushup', timeControl = 'bullet') =>
-  from.rpc<ChallengeMatch>('challenge_friend', { userId: to.userId, exercise, timeControl });
+  from.rpc<ChallengeMatch>('challenge_player', { userId: to.userId, exercise, timeControl });
+
+/** The server allows one fight request to the same player per 10 s. */
+const cooldown = () => sleep(10_500);
+
+async function block(p: Player, target: Player) {
+  const res = await fetch(`${BASE}/v2/friend/block?ids=${target.userId}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${p.token}` },
+  });
+  if (!res.ok) throw new Error(`block: ${res.status}`);
+}
 
 const join = (
   p: Player,
@@ -82,9 +93,32 @@ async function main() {
   console.log('who can be challenged');
   check(/offline/.test((await rejects(challenge(a, b)))?.message ?? ''), 'an offline friend cannot be challenged');
   const bApp = await online(b);
-  check(/not your friend/.test((await rejects(challenge(stranger, b)))?.message ?? ''), 'a stranger cannot challenge');
   check(await rejects(challenge(a, a)), 'you cannot challenge yourself');
   check(await rejects(challenge(a, b, 'pushup', 'flight-nope')), 'unknown competitions are refused');
+
+  console.log('online players (anyone can be challenged)');
+  const listed = (await stranger.rpc<{ players: { userId: string; online: boolean }[] }>('get_online_players')).players;
+  check(listed.some((x) => x.userId === b.userId && x.online), 'B is in the "online now" list');
+  check(!listed.some((x) => x.userId === a.userId), 'offline A is not');
+  check(!listed.some((x) => x.userId === stranger.userId), 'you are not in your own list');
+  const fromStranger = await challenge(stranger, b);
+  await sleep(500);
+  const strangerInvite = bApp.invites.find((x) => x.matchId === fromStranger.matchId);
+  check(strangerInvite?.userId === stranger.userId, 'a player who is not a friend can send a fight request');
+  check(strangerInvite?.friend === false, 'it is marked as not from a friend');
+  check(
+    /too many/.test((await rejects(challenge(stranger, b)))?.message ?? ''),
+    'the same player cannot be challenged again right away',
+  );
+  await stranger.rpc('decline_challenge', { matchId: fromStranger.matchId, userId: b.userId }).then(
+    () => check(false, 'only the challenged player can decline'),
+    () => check(true, 'only the challenged player can decline'),
+  );
+  await block(b, stranger);
+  await cooldown();
+  check(/offline/.test((await rejects(challenge(stranger, b)))?.message ?? ''), 'a player who blocked you looks offline');
+  const afterBlock = (await stranger.rpc<{ players: { userId: string }[] }>('get_online_players')).players;
+  check(!afterBlock.some((x) => x.userId === b.userId), 'and is not in your online list');
 
   console.log('decline');
   const first = await challenge(a, b);
@@ -92,6 +126,7 @@ async function main() {
   await sleep(500);
   const invite = bApp.invites.find((x) => x.matchId === first.matchId);
   check(invite?.userId === a.userId && invite.username === a.name, 'B receives A’s fight request');
+  check(invite?.friend === true, 'it is marked as from a friend');
   check(invite?.exerciseId === 'pushup' && invite.timeControlId === 'bullet', 'it names the movement and competition');
   check(invite && invite.expiresAt > Date.now() + 50_000, 'it can be accepted for about a minute');
   await b.rpc('decline_challenge', { matchId: invite!.matchId, userId: invite!.userId });
@@ -100,6 +135,7 @@ async function main() {
   check((await rejects(join(b, first))) instanceof ChallengeError, 'the declined match is closed');
 
   console.log('accept');
+  await cooldown();
   const second = await challenge(a, b, 'flappy', 'flight');
   const aJoin = join(a, second, 'flight', 'flappy');
   await sleep(500);
@@ -113,6 +149,7 @@ async function main() {
   bJoin.match.close();
 
   console.log('cancel');
+  await cooldown();
   const third = await challenge(a, b);
   const abort = new AbortController();
   const aCancelled = rejects(join(a, third, 'bullet', 'pushup', abort.signal));

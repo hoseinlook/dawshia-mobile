@@ -12,13 +12,13 @@ interface ChallengesContextValue {
   incoming: ChallengeInvite | null;
   accept(invite: ChallengeInvite): void;
   decline(invite: ChallengeInvite): void;
-  /** Sends a challenge to an online friend and opens the waiting screen. */
-  send(friend: { userId: string; username: string }, exerciseId: string, timeControlId: string): Promise<void>;
+  /** Sends a challenge to an online player and opens the waiting screen. */
+  send(player: { userId: string; username: string }, exerciseId: string, timeControlId: string): Promise<void>;
 }
 
 const ChallengesContext = createContext<ChallengesContextValue | null>(null);
 
-/** Session route params for a friend challenge. */
+/** Session route params for a 1v1 challenge. */
 export function challengeRoute(
   c: { matchId: string; expiresAt: number; exerciseId: string; timeControlId: string },
   opponent: string,
@@ -39,8 +39,8 @@ export function challengeRoute(
 }
 
 /**
- * Friend challenges: collects incoming challenges from the presence socket's
- * notifications and sends challenges to friends.
+ * 1v1 challenges: collects incoming challenges from the presence socket's
+ * notifications and sends challenges to online players (friends or not).
  */
 export function ChallengesProvider({ children }: { children: ReactNode }) {
   const { social } = useServices();
@@ -52,7 +52,7 @@ export function ChallengesProvider({ children }: { children: ReactNode }) {
     if (!invite) return;
     haptics.success();
     setNow(Date.now());
-    // One open challenge per friend: a new one replaces the old.
+    // One open challenge per player: a new one replaces the old.
     setInvites((prev) => [...prev.filter((p) => p.userId !== invite.userId), invite]);
   }, []);
   useNotifications(onNotification);
@@ -84,13 +84,13 @@ export function ChallengesProvider({ children }: { children: ReactNode }) {
     [dismiss, social],
   );
   const send = useCallback(
-    async (friend: { userId: string; username: string }, exerciseId: string, timeControlId: string) => {
-      const c = await social.challengeFriend(
-        friend.userId,
+    async (player: { userId: string; username: string }, exerciseId: string, timeControlId: string) => {
+      const c = await social.challengePlayer(
+        player.userId,
         exerciseId,
         timeControlId as ChallengeInvite['timeControlId'],
       );
-      router.replace(challengeRoute({ ...c, exerciseId, timeControlId }, friend.username, 'sent'));
+      router.replace(challengeRoute({ ...c, exerciseId, timeControlId }, player.username, 'sent'));
     },
     [social],
   );

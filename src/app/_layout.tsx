@@ -9,6 +9,7 @@ import { preloadPoseEngine } from '../features/pose/poseEngine';
 import { ChatProvider } from '../features/chat/ChatProvider';
 import { NoticeCenter } from '../features/notices/NoticeCenter';
 import { ChallengesProvider } from '../features/social/ChallengesProvider';
+import { IncomingChallenge } from '../features/social/IncomingChallenge';
 import { FriendsProvider } from '../features/social/FriendsProvider';
 import { NotificationsProvider } from '../features/social/NotificationsProvider';
 import { useRestoreAvatar } from '../features/avatar/useRestoreAvatar';
@@ -74,6 +75,7 @@ function AppStack() {
             </Stack.Protected>
           </Stack>
           {inApp ? <NoticeCenter /> : null}
+          {inApp ? <IncomingChallenge /> : null}
         </ChatProvider>
       </ChallengesProvider>
     </NotificationsProvider>

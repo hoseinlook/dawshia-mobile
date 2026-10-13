@@ -54,5 +54,7 @@ export function toChallengeInvite(n: ServerNotification): ChallengeInvite | null
     exerciseId: c.exercise,
     timeControlId: String(c.timeControl) as ChallengeInvite['timeControlId'],
     expiresAt: Number(c.expiresAt) || Date.now() + 60_000,
+    // Older servers only sent friend challenges.
+    friend: c.friend !== false,
   };
 }

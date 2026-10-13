@@ -10,11 +10,17 @@ const RETRY_MS = [2000, 5000, 15000, 30000];
  * notifications this long, so they can show as phone notifications. Browser tabs keep it.
  */
 const BACKGROUND_MS = Platform.OS === 'web' ? Infinity : 10 * 60_000;
+/**
+ * After the app leaves the screen, the user still shows as online this long, so a quick
+ * switch to another app doesn't hide them and fight requests still reach them (as a phone
+ * notification). An open browser tab stays online.
+ */
+const ONLINE_GRACE_MS = Platform.OS === 'web' ? Infinity : 2 * 60_000;
 
 /**
- * Keeps a real-time socket open while the user is signed in. In the foreground it carries
- * presence status, so friends see them as online; in the background it reconnects without
- * status for a while (BACKGROUND_MS). Server notifications (friend requests, fights, chat)
+ * Keeps a real-time socket open while the user is signed in. In the foreground (and
+ * ONLINE_GRACE_MS after leaving it) it carries presence status, so other players see them
+ * as online and can challenge them; then it reconnects without status for a while (BACKGROUND_MS). Server notifications (friend requests, fights, chat)
  * arrive on it and go to `onNotifications`.
  */
 export function usePresence(onNotifications?: (payload: unknown) => void): void {
@@ -34,15 +40,18 @@ export function usePresence(onNotifications?: (payload: unknown) => void): void 
     let foreground = AppState.currentState !== 'background';
     let backgroundSince = 0;
     let quietTimer: ReturnType<typeof setTimeout> | null = null;
+    // Whether the socket carries online status (foreground, or shortly after).
+    let online = foreground;
+    let graceTimer: ReturnType<typeof setTimeout> | null = null;
 
     const connect = async () => {
       if (stopped || socket) return;
-      const status = foreground;
+      const status = online;
       const s = new NakamaSocket();
       try {
         await s.connect(await manager.getToken(), { status });
-        // Stopped, or the app moved between foreground and background while connecting.
-        if (stopped || status !== foreground || socket) {
+        // Stopped, or the online status changed while connecting.
+        if (stopped || status !== online || socket) {
           s.close();
           if (!stopped && !socket) connect();
           return;
@@ -82,20 +91,36 @@ export function usePresence(onNotifications?: (payload: unknown) => void): void 
       const next = state !== 'background';
       if (next === foreground) return;
       foreground = next;
-      // Reconnect with (foreground) or without (background) online status.
-      disconnect();
       if (quietTimer) clearTimeout(quietTimer);
-      quietTimer = null;
-      if (!foreground) {
-        backgroundSince = Date.now();
-        if (Number.isFinite(BACKGROUND_MS)) quietTimer = setTimeout(disconnect, BACKGROUND_MS);
+      if (graceTimer) clearTimeout(graceTimer);
+      quietTimer = graceTimer = null;
+      if (foreground) {
+        if (!online) {
+          // Back from a quiet socket: reconnect with online status.
+          online = true;
+          disconnect();
+        }
+        connect();
+        return;
       }
+      backgroundSince = Date.now();
+      // Online a little longer, then a quiet socket (no status), then nothing.
+      if (Number.isFinite(ONLINE_GRACE_MS)) {
+        graceTimer = setTimeout(() => {
+          graceTimer = null;
+          online = false;
+          disconnect();
+          connect();
+        }, ONLINE_GRACE_MS);
+      }
+      if (Number.isFinite(BACKGROUND_MS)) quietTimer = setTimeout(disconnect, BACKGROUND_MS);
       connect();
     });
     return () => {
       stopped = true;
       sub.remove();
       if (quietTimer) clearTimeout(quietTimer);
+      if (graceTimer) clearTimeout(graceTimer);
       disconnect();
     };
   }, [manager]);

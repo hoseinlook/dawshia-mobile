@@ -4,7 +4,6 @@ import { View } from 'react-native';
 import { useChat } from '../../features/chat/ChatProvider';
 import { IncomingMessage } from '../../features/chat/IncomingMessage';
 import { useFriends } from '../../features/social/FriendsProvider';
-import { IncomingChallenge } from '../../features/social/IncomingChallenge';
 import { useI18n } from '../../i18n/useI18n';
 import { Icon, type IconName } from '../../ui/components/Icon';
 import { colors, fonts } from '../../ui/theme';
@@ -51,7 +50,6 @@ export default function TabsLayout() {
         <Tabs.Screen name="settings" options={{ title: m.tabs.settings, tabBarIcon: icon('cog') }} />
       </Tabs>
       <IncomingMessage />
-      <IncomingChallenge />
     </View>
   );
 }

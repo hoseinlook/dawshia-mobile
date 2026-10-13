@@ -95,12 +95,13 @@ const offlineSocial: SocialService = {
   listTopPlayers: async () => {
     throw new Error('signInRequired');
   },
+  listOnlinePlayers: async () => [],
   getPlayer: async () => {
     throw new Error('signInRequired');
   },
   setAvatar: async () => {},
   getAvatars: async () => ({}),
-  challengeFriend: async () => {
+  challengePlayer: async () => {
     throw new Error('signInRequired');
   },
   declineChallenge: async () => {},
